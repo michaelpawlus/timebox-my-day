@@ -30,7 +30,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
             <li className="flex gap-3">
               <span className="font-semibold text-blue-600">1.</span>
               <div>
-                <strong>Import your calendar:</strong> Upload an .ics file to visualize today's
+                <strong>Import your calendar:</strong> Upload an .ics file to visualize today&apos;s
                 meetings as busy blocks. The app will parse events for the selected date.
               </div>
             </li>
@@ -38,7 +38,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
               <span className="font-semibold text-blue-600">2.</span>
               <div>
                 <strong>Create plan blocks:</strong> Click anywhere on the timeline or use the
-                "+ New Block" button to add focused work time. Click blocks to edit them.
+                &ldquo;+ New Block&rdquo; button to add focused work time. Click blocks to edit them.
               </div>
             </li>
             <li className="flex gap-3">
