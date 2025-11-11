@@ -5,10 +5,7 @@ import Button from './ui/Button'
 import { useTimeBoxStore } from '@/lib/store'
 import { PlanBlock } from '@/lib/types'
 import { createISODateTime } from '@/lib/time'
-
-function uuid() {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
+import { generateBlockId } from '@/lib/id'
 
 export default function NewBlockButton() {
   const { selectedDate, startHour, addPlanBlock, setSelectedBlockId } = useTimeBoxStore()
@@ -25,7 +22,7 @@ export default function NewBlockButton() {
     const endDateTime = endDate.toISOString()
 
     const newBlock: PlanBlock = {
-      id: uuid(),
+      id: generateBlockId(),
       title: 'Focus Block',
       start: startDateTime,
       end: endDateTime,
