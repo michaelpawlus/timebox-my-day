@@ -1,5 +1,8 @@
 import { format, parse, parseISO, isToday as isTodayFn, startOfDay, endOfDay } from 'date-fns'
 
+// Re-export parseISO for use in components
+export { parseISO }
+
 export function formatTime(date: Date | string): string {
   const d = typeof date === 'string' ? parseISO(date) : date
   return format(d, 'HH:mm')
