@@ -5,10 +5,7 @@ import { useTimeBoxStore } from '@/lib/store'
 import { generateHourLabels, createISODateTime, parseISO } from '@/lib/time'
 import TimeBlock from './TimeBlock'
 import { PlanBlock } from '@/lib/types'
-
-function uuid() {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
+import { generateBlockId } from '@/lib/id'
 
 export default function Timeline() {
   const {
@@ -47,7 +44,7 @@ export default function Timeline() {
     const endDateTime = endDate.toISOString()
 
     const newBlock: PlanBlock = {
-      id: uuid(),
+      id: generateBlockId(),
       title: 'Focus Block',
       start: startDateTime,
       end: endDateTime,
