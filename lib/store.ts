@@ -29,6 +29,15 @@ interface TimeBoxStore {
   // UI state
   selectedBlockId: string | null
   setSelectedBlockId: (id: string | null) => void
+
+  // Drag state
+  isDragging: boolean
+  draggedBlockId: string | null
+  dragMode: 'move' | 'resize-top' | 'resize-bottom' | null
+  dragOriginalStart: string | null
+  dragOriginalEnd: string | null
+  startDrag: (blockId: string, mode: 'move' | 'resize-top' | 'resize-bottom', start: string, end: string) => void
+  endDrag: () => void
 }
 
 export const useTimeBoxStore = create<TimeBoxStore>()(
@@ -42,6 +51,11 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
       planBlocks: [],
       conflicts: [],
       selectedBlockId: null,
+      isDragging: false,
+      draggedBlockId: null,
+      dragMode: null,
+      dragOriginalStart: null,
+      dragOriginalEnd: null,
 
       // Actions
       setSelectedDate: (date) => set({ selectedDate: date }),
@@ -69,6 +83,24 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
 
       setConflicts: (conflicts) => set({ conflicts }),
       setSelectedBlockId: (id) => set({ selectedBlockId: id }),
+
+      startDrag: (blockId, mode, start, end) =>
+        set({
+          isDragging: true,
+          draggedBlockId: blockId,
+          dragMode: mode,
+          dragOriginalStart: start,
+          dragOriginalEnd: end,
+        }),
+      
+      endDrag: () =>
+        set({
+          isDragging: false,
+          draggedBlockId: null,
+          dragMode: null,
+          dragOriginalStart: null,
+          dragOriginalEnd: null,
+        }),
     }),
     {
       name: 'timebox-storage',
