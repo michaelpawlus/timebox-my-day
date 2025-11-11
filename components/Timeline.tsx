@@ -5,7 +5,6 @@ import { useTimeBoxStore } from '@/lib/store'
 import { generateHourLabels, createISODateTime, parseISO } from '@/lib/time'
 import TimeBlock from './TimeBlock'
 import { PlanBlock } from '@/lib/types'
-import { v4 as uuidv4 } from 'uuid'
 
 function uuid() {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
