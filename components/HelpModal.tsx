@@ -38,7 +38,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
               <span className="font-semibold text-blue-600">2.</span>
               <div>
                 <strong>Create plan blocks:</strong> Click anywhere on the timeline or use the
-                &ldquo;+ New Block&rdquo; button to add focused work time. Click blocks to edit them.
+                &quot;+ New Block&quot; button to add focused work time. Click blocks to edit them.
               </div>
             </li>
             <li className="flex gap-3">
