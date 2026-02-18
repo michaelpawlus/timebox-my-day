@@ -6,6 +6,7 @@ import { useTimeBoxStore } from '@/lib/store'
 import { PlanBlock } from '@/lib/types'
 import { createISODateTime } from '@/lib/time'
 import { generateBlockId } from '@/lib/id'
+import { CATEGORY_COLORS } from '@/lib/categories'
 
 export default function NewBlockButton() {
   const { selectedDate, startHour, addPlanBlock, setSelectedBlockId } = useTimeBoxStore()
@@ -28,6 +29,8 @@ export default function NewBlockButton() {
       end: endDateTime,
       location: '',
       notes: '',
+      color: CATEGORY_COLORS.focus,
+      category: 'focus',
     }
 
     addPlanBlock(newBlock)

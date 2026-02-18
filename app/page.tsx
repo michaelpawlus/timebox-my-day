@@ -8,6 +8,8 @@ import PlanBlockEditor from '@/components/PlanBlockEditor'
 import NewBlockButton from '@/components/NewBlockButton'
 import ConflictWarning from '@/components/ConflictWarning'
 import HelpModal from '@/components/HelpModal'
+import TextInputArea from '@/components/TextInputArea'
+import HoldingArea from '@/components/HoldingArea'
 import { ToastContainer } from '@/components/Toast'
 import Button from '@/components/ui/Button'
 import { useState, useEffect } from 'react'
@@ -70,7 +72,7 @@ export default function Home() {
               </Button>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <DatePicker />
             <TimeWindowControls />
@@ -79,25 +81,23 @@ export default function Home() {
       </header>
 
       {/* Main content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 space-y-4">
+        {/* Text Input Area - full width */}
+        <TextInputArea />
+
+        {/* Conflict Warning - full width */}
+        <ConflictWarning />
+
+        {/* Holding Area + Timeline grid */}
         <div className="grid grid-cols-4 gap-6">
-          {/* Sidebar */}
+          {/* Sidebar: Holding Area + New Block */}
           <div className="col-span-1 space-y-4">
+            <HoldingArea />
             <NewBlockButton />
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <h3 className="font-semibold text-gray-900 mb-2">Quick Tips</h3>
-              <ul className="text-sm text-gray-600 space-y-2">
-                <li>• Click timeline to create blocks</li>
-                <li>• Click blocks to edit</li>
-                <li>• Import your calendar</li>
-                <li>• Export your plan</li>
-              </ul>
-            </div>
           </div>
 
           {/* Timeline */}
-          <div className="col-span-3 space-y-4">
-            <ConflictWarning />
+          <div className="col-span-3">
             <div className="bg-white rounded-lg shadow-md p-6" style={{ height: '70vh' }}>
               <Timeline />
             </div>
@@ -115,4 +115,3 @@ export default function Home() {
     </main>
   )
 }
-

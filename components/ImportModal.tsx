@@ -8,6 +8,7 @@ import { parseICSFile, readFileAsText, ParseResult } from '@/lib/ics-parse'
 import { parseCSV, csvRowsToICS, CSVParseResult, ParsedCSVRow } from '@/lib/csv-parse'
 import { downloadICS } from '@/lib/ics-generate'
 import { useTimeBoxStore } from '@/lib/store'
+import { getColorForTitle } from '@/lib/categories'
 import { showSuccess, showError } from '@/lib/toast'
 import { format } from 'date-fns'
 
@@ -81,6 +82,7 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
         // Also add to planner as plan blocks
         const validRows = csvParseResult.rows.filter(row => row.isValid)
         validRows.forEach(row => {
+          const { color, category } = getColorForTitle(row.title)
           addPlanBlock({
             id: `csv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             title: row.title,
@@ -88,6 +90,8 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
             end: new Date(row.end.replace(' ', 'T')).toISOString(),
             location: row.location,
             notes: row.description,
+            color,
+            category,
           })
         })
         showSuccess(`Exported ICS and loaded ${validRows.length} blocks into planner!`)

@@ -2,11 +2,12 @@
 
 import React, { useCallback, useState, useRef, useEffect } from 'react'
 import { useTimeBoxStore } from '@/lib/store'
-import { generateHourLabels, createISODateTime, parseISO, formatTime } from '@/lib/time'
+import { generateHourLabels, createISODateTime, parseISO, formatTime, minutesToTime } from '@/lib/time'
 import TimeBlock from './TimeBlock'
 import { PlanBlock } from '@/lib/types'
 import { generateBlockId } from '@/lib/id'
 import { calculateDraggedTime, calculateResizedTime, getDurationMinutes } from '@/lib/drag-utils'
+import { CATEGORY_COLORS } from '@/lib/categories'
 
 export default function Timeline() {
   const {
@@ -25,12 +26,20 @@ export default function Timeline() {
     dragOriginalEnd,
     updatePlanBlock,
     endDrag,
+    // Holding area drag
+    holdingDragBlockId,
+    unscheduledBlocks,
+    removeUnscheduledBlock,
+    endHoldingDrag,
   } = useTimeBoxStore()
 
   const timelineRef = useRef<HTMLDivElement>(null)
   const [dragStartY, setDragStartY] = useState<number | null>(null)
   const [tempBlockPosition, setTempBlockPosition] = useState<{ start: string; end: string } | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null)
+
+  // Ghost preview for holding-area drag
+  const [ghostPreview, setGhostPreview] = useState<{ top: number; height: number; startTime: string; endTime: string } | null>(null)
 
   const hourLabels = generateHourLabels(startHour, endHour)
   const totalHours = endHour - startHour
@@ -44,10 +53,10 @@ export default function Timeline() {
 
       const rect = timelineRef.current.getBoundingClientRect()
       const currentY = e.clientY - rect.top
-      
+
       // Update tooltip position
       setTooltipPosition({ x: e.clientX, y: e.clientY })
-      
+
       // Store initial position on first move
       if (dragStartY === null) {
         setDragStartY(currentY)
@@ -83,7 +92,7 @@ export default function Timeline() {
       }
 
       setTempBlockPosition(newTimes)
-      
+
       // Update the block in real-time
       updatePlanBlock(draggedBlockId, {
         start: newTimes.start,
@@ -122,22 +131,123 @@ export default function Timeline() {
     endDrag,
   ])
 
+  // Handle holding-area drag over timeline
+  useEffect(() => {
+    if (!holdingDragBlockId) {
+      setGhostPreview(null)
+      return
+    }
+
+    const holdingBlock = unscheduledBlocks.find((b) => b.id === holdingDragBlockId)
+    if (!holdingBlock) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!timelineRef.current) return
+
+      const rect = timelineRef.current.getBoundingClientRect()
+      const isOverTimeline =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+
+      if (!isOverTimeline) {
+        setGhostPreview(null)
+        return
+      }
+
+      const y = e.clientY - rect.top
+      const clickedMinute = (y / rect.height) * (totalHours * 60) + startHour * 60
+      const roundedMinute = Math.round(clickedMinute / 15) * 15
+
+      // Constrain to timeline bounds
+      const maxStart = endHour * 60 - holdingBlock.durationMinutes
+      const clampedStart = Math.max(startHour * 60, Math.min(roundedMinute, maxStart))
+
+      const endMinute = clampedStart + holdingBlock.durationMinutes
+      const topPct = ((clampedStart - startHour * 60) / (totalHours * 60)) * 100
+      const heightPct = (holdingBlock.durationMinutes / (totalHours * 60)) * 100
+
+      setGhostPreview({
+        top: topPct,
+        height: heightPct,
+        startTime: minutesToTime(clampedStart),
+        endTime: minutesToTime(endMinute),
+      })
+    }
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!timelineRef.current || !holdingBlock) {
+        endHoldingDrag()
+        setGhostPreview(null)
+        return
+      }
+
+      const rect = timelineRef.current.getBoundingClientRect()
+      const isOverTimeline =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+
+      if (isOverTimeline && ghostPreview) {
+        // Convert to PlanBlock
+        const startISO = createISODateTime(selectedDate, ghostPreview.startTime)
+        const endISO = createISODateTime(selectedDate, ghostPreview.endTime)
+
+        const newBlock: PlanBlock = {
+          id: generateBlockId(),
+          title: holdingBlock.title,
+          start: startISO,
+          end: endISO,
+          color: holdingBlock.color,
+          category: holdingBlock.category,
+        }
+
+        addPlanBlock(newBlock)
+        removeUnscheduledBlock(holdingBlock.id)
+      }
+
+      endHoldingDrag()
+      setGhostPreview(null)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [
+    holdingDragBlockId,
+    unscheduledBlocks,
+    startHour,
+    endHour,
+    totalHours,
+    selectedDate,
+    addPlanBlock,
+    removeUnscheduledBlock,
+    endHoldingDrag,
+    ghostPreview,
+  ])
+
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     // Don't create new blocks when dragging
-    if (isDragging) return
-    
+    if (isDragging || holdingDragBlockId) return
+
     const rect = e.currentTarget.getBoundingClientRect()
     const y = e.clientY - rect.top
     const clickedMinute = (y / rect.height) * (totalHours * 60) + (startHour * 60)
-    
+
     // Round to nearest 15 minutes
     const roundedMinute = Math.round(clickedMinute / 15) * 15
     const hours = Math.floor(roundedMinute / 60)
     const minutes = roundedMinute % 60
-    
+
     const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
     const startDateTime = createISODateTime(selectedDate, startTime)
-    
+
     // Default 60-minute duration
     const endDate = new Date(parseISO(startDateTime))
     endDate.setMinutes(endDate.getMinutes() + 60)
@@ -150,11 +260,13 @@ export default function Timeline() {
       end: endDateTime,
       location: '',
       notes: '',
+      color: CATEGORY_COLORS.focus,
+      category: 'focus',
     }
 
     addPlanBlock(newBlock)
     setSelectedBlockId(newBlock.id)
-  }, [selectedDate, startHour, totalHours, addPlanBlock, setSelectedBlockId, isDragging])
+  }, [selectedDate, startHour, totalHours, addPlanBlock, setSelectedBlockId, isDragging, holdingDragBlockId])
 
   const handleBlockClick = useCallback((id: string) => {
     setSelectedBlockId(id)
@@ -189,7 +301,7 @@ export default function Timeline() {
           role="button"
           aria-label="Click to create a new plan block"
           tabIndex={0}
-          style={{ cursor: isDragging ? 'default' : 'crosshair' }}
+          style={{ cursor: isDragging || holdingDragBlockId ? 'default' : 'crosshair' }}
         />
 
         {/* Busy events */}
@@ -219,6 +331,28 @@ export default function Timeline() {
           )
         })}
 
+        {/* Ghost preview for holding-area drag */}
+        {ghostPreview && holdingDragBlockId && (() => {
+          const holdingBlock = unscheduledBlocks.find((b) => b.id === holdingDragBlockId)
+          return (
+            <div
+              className="absolute left-0 right-0 mx-1 rounded-md px-2 py-1 text-sm text-white pointer-events-none border-2 border-dashed"
+              style={{
+                top: `${ghostPreview.top}%`,
+                height: `${ghostPreview.height}%`,
+                minHeight: '30px',
+                backgroundColor: holdingBlock ? `${holdingBlock.color}80` : 'rgba(59,130,246,0.5)',
+                borderColor: holdingBlock?.color || '#3b82f6',
+              }}
+            >
+              <div className="font-semibold truncate">{holdingBlock?.title}</div>
+              <div className="text-xs opacity-90">
+                {ghostPreview.startTime} - {ghostPreview.endTime}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Drag/Resize Tooltip */}
         {isDragging && tooltipPosition && tempBlockPosition && (
           <div
@@ -240,4 +374,3 @@ export default function Timeline() {
     </div>
   )
 }
-

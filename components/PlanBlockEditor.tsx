@@ -4,19 +4,29 @@ import React, { useState, useEffect } from 'react'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { useTimeBoxStore } from '@/lib/store'
-import { PlanBlock } from '@/lib/types'
+import { BlockCategory } from '@/lib/types'
 import { formatDate, formatTime, parseISO } from '@/lib/time'
+import { CATEGORY_COLORS } from '@/lib/categories'
 
 interface PlanBlockEditorProps {
   blockId: string | null
   onClose: () => void
 }
 
+const CATEGORY_LABELS: Record<BlockCategory, string> = {
+  meal: 'Meal',
+  exercise: 'Exercise',
+  meeting: 'Meeting',
+  focus: 'Focus',
+  break: 'Break',
+  other: 'Other',
+}
+
 export default function PlanBlockEditor({ blockId, onClose }: PlanBlockEditorProps) {
-  const { planBlocks, updatePlanBlock, deletePlanBlock, selectedDate } = useTimeBoxStore()
-  
+  const { planBlocks, updatePlanBlock, deletePlanBlock } = useTimeBoxStore()
+
   const block = planBlocks.find(b => b.id === blockId)
-  
+
   const [formData, setFormData] = useState({
     title: '',
     startDate: '',
@@ -24,6 +34,8 @@ export default function PlanBlockEditor({ blockId, onClose }: PlanBlockEditorPro
     duration: 60,
     location: '',
     notes: '',
+    category: 'focus' as BlockCategory,
+    color: CATEGORY_COLORS.focus,
   })
 
   useEffect(() => {
@@ -31,7 +43,7 @@ export default function PlanBlockEditor({ blockId, onClose }: PlanBlockEditorPro
       const startDate = parseISO(block.start)
       const endDate = parseISO(block.end)
       const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60)
-      
+
       setFormData({
         title: block.title,
         startDate: formatDate(startDate),
@@ -39,30 +51,42 @@ export default function PlanBlockEditor({ blockId, onClose }: PlanBlockEditorPro
         duration: durationMinutes,
         location: block.location || '',
         notes: block.notes || '',
+        category: block.category || 'focus',
+        color: block.color || CATEGORY_COLORS.focus,
       })
     }
   }, [block])
 
   if (!block) return null
 
+  const handleCategoryChange = (category: BlockCategory) => {
+    setFormData({
+      ...formData,
+      category,
+      color: CATEGORY_COLORS[category],
+    })
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const [hours, minutes] = formData.startTime.split(':').map(Number)
     const startDateTime = new Date(formData.startDate)
     startDateTime.setHours(hours, minutes, 0, 0)
-    
+
     const endDateTime = new Date(startDateTime)
     endDateTime.setMinutes(endDateTime.getMinutes() + formData.duration)
-    
+
     updatePlanBlock(block.id, {
       title: formData.title,
       start: startDateTime.toISOString(),
       end: endDateTime.toISOString(),
       location: formData.location || undefined,
       notes: formData.notes || undefined,
+      color: formData.color,
+      category: formData.category,
     })
-    
+
     onClose()
   }
 
@@ -89,6 +113,30 @@ export default function PlanBlockEditor({ blockId, onClose }: PlanBlockEditorPro
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
+        </div>
+
+        {/* Category */}
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+            Category
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            {(Object.keys(CATEGORY_LABELS) as BlockCategory[]).map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  formData.category === cat
+                    ? 'text-white ring-2 ring-offset-1 ring-gray-400'
+                    : 'text-white opacity-60 hover:opacity-80'
+                }`}
+                style={{ backgroundColor: CATEGORY_COLORS[cat] }}
+                onClick={() => handleCategoryChange(cat)}
+              >
+                {CATEGORY_LABELS[cat]}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Date and Time */}
@@ -191,4 +239,3 @@ export default function PlanBlockEditor({ blockId, onClose }: PlanBlockEditorPro
     </Modal>
   )
 }
-
