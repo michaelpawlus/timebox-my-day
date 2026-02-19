@@ -60,3 +60,10 @@ export interface Conflict {
   type: 'busy' | 'plan';
 }
 
+// To-do list item
+export interface TodoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+

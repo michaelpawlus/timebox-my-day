@@ -10,6 +10,7 @@ import ConflictWarning from '@/components/ConflictWarning'
 import HelpModal from '@/components/HelpModal'
 import TextInputArea from '@/components/TextInputArea'
 import HoldingArea from '@/components/HoldingArea'
+import TodoList from '@/components/TodoList'
 import { ToastContainer } from '@/components/Toast'
 import Button from '@/components/ui/Button'
 import { useState, useEffect } from 'react'
@@ -94,6 +95,7 @@ export default function Home() {
           <div className="col-span-1 space-y-4">
             <HoldingArea />
             <NewBlockButton />
+            <TodoList />
           </div>
 
           {/* Timeline */}

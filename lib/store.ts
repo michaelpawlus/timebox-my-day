@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { BusyEvent, PlanBlock, Conflict, UnscheduledBlock } from './types'
+import { BusyEvent, PlanBlock, Conflict, UnscheduledBlock, TodoItem } from './types'
 
 interface TimeBoxStore {
   // Date and time window
@@ -49,6 +49,13 @@ interface TimeBoxStore {
   holdingDragBlockId: string | null
   startHoldingDrag: (id: string) => void
   endHoldingDrag: () => void
+
+  // To-do list
+  todoItems: TodoItem[]
+  addTodoItem: (item: TodoItem) => void
+  toggleTodoItem: (id: string) => void
+  deleteTodoItem: (id: string) => void
+  clearCompletedTodos: () => void
 }
 
 export const useTimeBoxStore = create<TimeBoxStore>()(
@@ -69,6 +76,7 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
       dragOriginalStart: null,
       dragOriginalEnd: null,
       holdingDragBlockId: null,
+      todoItems: [],
 
       // Actions
       setSelectedDate: (date) => set({ selectedDate: date }),
@@ -129,13 +137,35 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
       // Holding area drag
       startHoldingDrag: (id) => set({ holdingDragBlockId: id }),
       endHoldingDrag: () => set({ holdingDragBlockId: null }),
+
+      // To-do list
+      addTodoItem: (item) =>
+        set((state) => ({ todoItems: [...state.todoItems, item] })),
+
+      toggleTodoItem: (id) =>
+        set((state) => ({
+          todoItems: state.todoItems.map((item) =>
+            item.id === id ? { ...item, completed: !item.completed } : item
+          ),
+        })),
+
+      deleteTodoItem: (id) =>
+        set((state) => ({
+          todoItems: state.todoItems.filter((item) => item.id !== id),
+        })),
+
+      clearCompletedTodos: () =>
+        set((state) => ({
+          todoItems: state.todoItems.filter((item) => !item.completed),
+        })),
     }),
     {
       name: 'timebox-storage',
-      version: 2,
+      version: 3,
       partialize: (state) => ({
         planBlocks: state.planBlocks,
         unscheduledBlocks: state.unscheduledBlocks,
+        todoItems: state.todoItems,
         startHour: state.startHour,
         endHour: state.endHour,
       }),
@@ -149,6 +179,9 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
             color: b.color || '#3b82f6',
           }))
           state.unscheduledBlocks = state.unscheduledBlocks || []
+        }
+        if (version < 3) {
+          state.todoItems = state.todoItems || []
         }
         return state as unknown as TimeBoxStore
       },
