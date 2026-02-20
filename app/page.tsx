@@ -22,7 +22,7 @@ import { exportPlanBlocks } from '@/lib/ics-generate'
 export default function Home() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
-  const { selectedBlockId, setSelectedBlockId, planBlocks, busyEvents, setConflicts, selectedDate } = useTimeBoxStore()
+  const { selectedBlockId, setSelectedBlockId, planBlocks, busyEvents, setConflicts, selectedDate, clearPlanBlocks } = useTimeBoxStore()
   const { toasts, removeToast } = useToastStore()
 
   // Detect conflicts whenever plan blocks or busy events change
@@ -100,8 +100,25 @@ export default function Home() {
 
           {/* Timeline */}
           <div className="col-span-3">
-            <div className="bg-white rounded-lg shadow-md p-6" style={{ height: '70vh' }}>
-              <Timeline />
+            <div className="bg-white rounded-lg shadow-md p-6" style={{ height: '70vh', display: 'flex', flexDirection: 'column' }}>
+              <div className="flex justify-end mb-2 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (planBlocks.length === 0) return
+                    if (window.confirm('Clear all blocks from the schedule?')) {
+                      clearPlanBlocks()
+                    }
+                  }}
+                  disabled={planBlocks.length === 0}
+                >
+                  Clear All
+                </Button>
+              </div>
+              <div className="flex-1 min-h-0">
+                <Timeline />
+              </div>
             </div>
           </div>
         </div>
