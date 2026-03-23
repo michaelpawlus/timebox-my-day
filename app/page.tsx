@@ -11,11 +11,11 @@ import HelpModal from '@/components/HelpModal'
 import TextInputArea from '@/components/TextInputArea'
 import HoldingArea from '@/components/HoldingArea'
 import TodoList from '@/components/TodoList'
-import { ToastContainer } from '@/components/Toast'
-import Button from '@/components/ui/Button'
+import ThemeToggle from '@/components/ThemeToggle'
+import { Button } from '@/components/ui/button'
 import { useState, useEffect } from 'react'
 import { useTimeBoxStore } from '@/lib/store'
-import { useToastStore, showSuccess, showError } from '@/lib/toast'
+import { showSuccess, showError } from '@/lib/toast'
 import { detectConflicts } from '@/lib/validation'
 import { exportPlanBlocks } from '@/lib/ics-generate'
 
@@ -23,7 +23,6 @@ export default function Home() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
   const { selectedBlockId, setSelectedBlockId, planBlocks, busyEvents, setConflicts, selectedDate, clearPlanBlocks } = useTimeBoxStore()
-  const { toasts, removeToast } = useToastStore()
 
   // Detect conflicts whenever plan blocks or busy events change
   useEffect(() => {
@@ -41,12 +40,12 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
+      <header className="bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-foreground">
               Time-Box My Day
             </h1>
             <div className="flex items-center gap-3">
@@ -58,7 +57,6 @@ export default function Home() {
                 Import
               </Button>
               <Button
-                variant="primary"
                 size="sm"
                 onClick={handleExport}
               >
@@ -71,6 +69,7 @@ export default function Home() {
               >
                 Help
               </Button>
+              <ThemeToggle />
             </div>
           </div>
 
@@ -100,7 +99,7 @@ export default function Home() {
 
           {/* Timeline */}
           <div className="col-span-3">
-            <div className="bg-white rounded-lg shadow-md p-6" style={{ height: '70vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="bg-card rounded-lg shadow-md p-6" style={{ height: '70vh', display: 'flex', flexDirection: 'column' }}>
               <div className="flex justify-end mb-2 shrink-0">
                 <Button
                   variant="ghost"
@@ -128,9 +127,6 @@ export default function Home() {
       <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} />
       <PlanBlockEditor blockId={selectedBlockId} onClose={() => setSelectedBlockId(null)} />
       <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
-
-      {/* Toast notifications */}
-      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
     </main>
   )
 }

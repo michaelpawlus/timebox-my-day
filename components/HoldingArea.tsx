@@ -20,8 +20,6 @@ export default function HoldingArea() {
     startHoldingDrag(id)
 
     const handleMouseUp = () => {
-      // endHoldingDrag is handled by the Timeline drop logic or here as fallback
-      // Give Timeline a chance to handle first
       setTimeout(() => {
         endHoldingDrag()
       }, 0)
@@ -32,9 +30,9 @@ export default function HoldingArea() {
 
   if (unscheduledBlocks.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <h3 className="font-semibold text-gray-900 mb-2">Holding Area</h3>
-        <p className="text-sm text-gray-400">
+      <div className="bg-card rounded-lg shadow-md p-4">
+        <h3 className="font-semibold text-card-foreground mb-2">Holding Area</h3>
+        <p className="text-sm text-muted-foreground">
           Blocks without a set time will appear here. Drag them onto the timeline to schedule.
         </p>
       </div>
@@ -42,8 +40,8 @@ export default function HoldingArea() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <h3 className="font-semibold text-gray-900 mb-3">Holding Area</h3>
+    <div className="bg-card rounded-lg shadow-md p-4">
+      <h3 className="font-semibold text-card-foreground mb-3">Holding Area</h3>
       <div className="space-y-2">
         {unscheduledBlocks.map((block) => (
           <div

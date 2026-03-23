@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import Button from './ui/Button'
+import { Button } from '@/components/ui/button'
 import { useTimeBoxStore } from '@/lib/store'
 import { parseTextInput } from '@/lib/text-parse'
 import { createISODateTime, minutesToTime } from '@/lib/time'
@@ -26,7 +26,6 @@ export default function TextInputArea() {
     const parsed = parseTextInput(trimmed)
     if (parsed.length === 0) return
 
-    // Clear existing blocks for a fresh plan
     clearPlanBlocks()
     clearUnscheduledBlocks()
 
@@ -35,7 +34,6 @@ export default function TextInputArea() {
 
     for (const block of parsed) {
       if (block.startMinutes !== undefined && block.endMinutes !== undefined) {
-        // Scheduled block — place directly on timeline
         const startTime = minutesToTime(block.startMinutes)
         const endTime = minutesToTime(block.endMinutes)
         const startISO = createISODateTime(selectedDate, startTime)
@@ -52,7 +50,6 @@ export default function TextInputArea() {
         addPlanBlock(planBlock)
         scheduledCount++
       } else {
-        // Unscheduled block — goes to holding area
         const unscheduled: UnscheduledBlock = {
           id: generateBlockId(),
           title: block.title,
@@ -79,8 +76,8 @@ export default function TextInputArea() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <label htmlFor="plan-input" className="block text-sm font-medium text-gray-700 mb-2">
+    <div className="bg-card rounded-lg shadow-md p-4">
+      <label htmlFor="plan-input" className="block text-sm font-medium text-foreground mb-2">
         Describe your day
       </label>
       <textarea
@@ -89,17 +86,17 @@ export default function TextInputArea() {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={3}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
         placeholder="Focus Time - 2 hours; Run - 1 hour; Lunch - 30 min; Meeting - 2pm - 4pm; Dinner - 30 min"
       />
       <div className="flex items-center gap-2 mt-2">
-        <Button variant="primary" size="sm" onClick={handleSubmit} disabled={!text.trim()}>
+        <Button size="sm" onClick={handleSubmit} disabled={!text.trim()}>
           Plan My Day
         </Button>
         <Button variant="secondary" size="sm" onClick={() => setText('')} disabled={!text}>
           Clear
         </Button>
-        <span className="text-xs text-gray-400 ml-2">
+        <span className="text-xs text-muted-foreground ml-2">
           Ctrl+Enter to submit
         </span>
       </div>

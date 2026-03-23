@@ -18,15 +18,20 @@ const CATEGORY_KEYWORDS: Record<BlockCategory, string[]> = {
   other: [],
 }
 
-// Fallback palette for 'other' category blocks to get distinct colors
-const FALLBACK_PALETTE = [
+// Extra colors for custom color picker and fallback palette
+export const EXTRA_COLORS = [
   '#ec4899', // pink
   '#f97316', // orange
   '#14b8a6', // teal
   '#8b5cf6', // purple
   '#ef4444', // red
   '#06b6d4', // cyan
+  '#84cc16', // lime
+  '#78716c', // stone
 ]
+
+// Fallback palette for 'other' category blocks to get distinct colors
+const FALLBACK_PALETTE = EXTRA_COLORS.slice(0, 6)
 let fallbackIndex = 0
 
 export function detectCategory(title: string): BlockCategory {

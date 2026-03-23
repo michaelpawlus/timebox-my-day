@@ -5,7 +5,7 @@ import React, { useCallback, useState } from 'react'
 interface DropzoneProps {
   onFileSelect: (file: File) => void
   accept?: string
-  maxSize?: number // in MB
+  maxSize?: number
   label?: string
 }
 
@@ -64,7 +64,7 @@ export default function Dropzone({
         className={`
           border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
           transition-colors
-          ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
+          ${isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-muted-foreground'}
         `}
       >
         <input
@@ -76,7 +76,7 @@ export default function Dropzone({
         />
         <label htmlFor="file-input" className="cursor-pointer">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-muted-foreground"
             stroke="currentColor"
             fill="none"
             viewBox="0 0 48 48"
@@ -89,16 +89,15 @@ export default function Dropzone({
               strokeLinejoin="round"
             />
           </svg>
-          <p className="mt-2 text-sm text-gray-600">{label}</p>
-          <p className="mt-1 text-xs text-gray-500">Max file size: {maxSize}MB</p>
+          <p className="mt-2 text-sm text-muted-foreground">{label}</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">Max file size: {maxSize}MB</p>
         </label>
       </div>
       {error && (
-        <p className="mt-2 text-sm text-red-600" role="alert">
+        <p className="mt-2 text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
     </div>
   )
 }
-

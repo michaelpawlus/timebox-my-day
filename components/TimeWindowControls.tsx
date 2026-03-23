@@ -10,12 +10,12 @@ export default function TimeWindowControls() {
 
   return (
     <div className="flex items-center gap-4">
-      <label className="text-sm text-gray-600">
+      <label className="text-sm text-muted-foreground">
         View from:
         <select
           value={startHour}
           onChange={(e) => setTimeWindow(Number(e.target.value), endHour)}
-          className="ml-2 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="ml-2 px-2 py-1 border border-input rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           {hours.slice(0, endHour - 1).map((hour) => (
             <option key={hour} value={hour}>
@@ -25,12 +25,12 @@ export default function TimeWindowControls() {
         </select>
       </label>
 
-      <label className="text-sm text-gray-600">
+      <label className="text-sm text-muted-foreground">
         to:
         <select
           value={endHour}
           onChange={(e) => setTimeWindow(startHour, Number(e.target.value))}
-          className="ml-2 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="ml-2 px-2 py-1 border border-input rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           {hours.slice(startHour + 1).map((hour) => (
             <option key={hour} value={hour}>
@@ -42,4 +42,3 @@ export default function TimeWindowControls() {
     </div>
   )
 }
-

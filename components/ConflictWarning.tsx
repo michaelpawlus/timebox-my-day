@@ -3,7 +3,6 @@
 import React from 'react'
 import { useTimeBoxStore } from '@/lib/store'
 import { getConflictsForBlock } from '@/lib/validation'
-import { BusyEvent, PlanBlock } from '@/lib/types'
 
 export default function ConflictWarning() {
   const { planBlocks, busyEvents, conflicts } = useTimeBoxStore()
@@ -24,7 +23,7 @@ export default function ConflictWarning() {
   }
 
   return (
-    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+    <div className="bg-yellow-50 dark:bg-yellow-950/30 border-l-4 border-yellow-400 p-4">
       <div className="flex">
         <div className="flex-shrink-0">
           <svg
@@ -40,16 +39,16 @@ export default function ConflictWarning() {
           </svg>
         </div>
         <div className="ml-3">
-          <h3 className="text-sm font-medium text-yellow-800">
+          <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
             Scheduling Conflicts Detected
           </h3>
-          <div className="mt-2 text-sm text-yellow-700">
+          <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
             <p>
               {uniqueBlocksWithConflicts} plan block{uniqueBlocksWithConflicts !== 1 ? 's' : ''}{' '}
               {uniqueBlocksWithConflicts !== 1 ? 'have' : 'has'} conflicts ({totalConflicts} total overlap{totalConflicts !== 1 ? 's' : ''}).
             </p>
             <details className="mt-2">
-              <summary className="cursor-pointer font-medium hover:text-yellow-900">
+              <summary className="cursor-pointer font-medium hover:text-yellow-900 dark:hover:text-yellow-100">
                 View details
               </summary>
               <ul className="mt-2 space-y-1 list-disc list-inside">
@@ -76,4 +75,3 @@ export default function ConflictWarning() {
     </div>
   )
 }
-

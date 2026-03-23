@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import Button from './ui/Button'
+import { Button } from '@/components/ui/button'
 import { useTimeBoxStore } from '@/lib/store'
 import { PlanBlock } from '@/lib/types'
 import { createISODateTime } from '@/lib/time'
@@ -12,11 +12,10 @@ export default function NewBlockButton() {
   const { selectedDate, startHour, addPlanBlock, setSelectedBlockId } = useTimeBoxStore()
 
   const handleNewBlock = () => {
-    // Create a block starting at the next hour
     const now = new Date()
     const nextHour = now.getHours() + 1
     const startTime = `${nextHour.toString().padStart(2, '0')}:00`
-    
+
     const startDateTime = createISODateTime(selectedDate, startTime)
     const endDate = new Date(startDateTime)
     endDate.setHours(endDate.getHours() + 1)
@@ -39,8 +38,6 @@ export default function NewBlockButton() {
 
   return (
     <Button
-      variant="primary"
-      size="md"
       onClick={handleNewBlock}
       className="w-full"
     >
@@ -48,4 +45,3 @@ export default function NewBlockButton() {
     </Button>
   )
 }
-

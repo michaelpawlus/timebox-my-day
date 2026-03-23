@@ -3,7 +3,7 @@
 import React from 'react'
 import { format, addDays, subDays } from 'date-fns'
 import { useTimeBoxStore } from '@/lib/store'
-import Button from './ui/Button'
+import { Button } from '@/components/ui/button'
 
 export default function DatePicker() {
   const { selectedDate, setSelectedDate } = useTimeBoxStore()
@@ -45,9 +45,9 @@ export default function DatePicker() {
       >
         ←
       </Button>
-      
+
       <div className="flex items-center gap-2">
-        <span className="font-semibold text-lg">
+        <span className="font-semibold text-lg text-foreground">
           {format(selectedDate, 'EEEE, MMM d, yyyy')}
         </span>
         {!isToday && (
@@ -69,4 +69,3 @@ export default function DatePicker() {
     </div>
   )
 }
-

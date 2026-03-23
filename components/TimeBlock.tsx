@@ -34,13 +34,11 @@ export default function TimeBlock({
   const isBeingDragged = isDragging && draggedBlockId === event.id
   const isPlanBlock = type === 'plan'
 
-  // Get block color for plan blocks
   const blockColor = isPlanBlock ? (event as PlanBlock).color || '#3b82f6' : undefined
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isPlanBlock) return
 
-    // Prevent if clicking on resize handle
     const target = e.target as HTMLElement
     if (target.classList.contains('resize-handle')) return
 
@@ -62,9 +60,8 @@ export default function TimeBlock({
   const conflictStyles = hasConflict ? 'ring-2 ring-red-500 ring-offset-1' : ''
   const dragStyles = isBeingDragged ? 'opacity-70 border-dashed' : ''
 
-  // Plan blocks use dynamic color via inline styles; busy blocks use Tailwind classes
   const typeStyles = type === 'busy'
-    ? 'bg-gray-200 text-gray-700 border border-gray-300 cursor-default'
+    ? 'bg-muted text-muted-foreground border border-border cursor-default'
     : 'text-white cursor-move border-2'
 
   return (
@@ -93,7 +90,6 @@ export default function TimeBlock({
       }}
       aria-label={`${type === 'busy' ? 'Busy' : 'Plan'} block: ${event.title} from ${startTime} to ${endTime}`}
     >
-      {/* Top resize handle - only for plan blocks */}
       {isPlanBlock && (
         <div
           className="resize-handle absolute top-0 left-0 right-0 h-2 cursor-n-resize hover:opacity-50 transition-opacity"
@@ -111,7 +107,6 @@ export default function TimeBlock({
         <div className="text-xs opacity-75 truncate">{event.location}</div>
       )}
 
-      {/* Bottom resize handle - only for plan blocks */}
       {isPlanBlock && (
         <div
           className="resize-handle absolute bottom-0 left-0 right-0 h-2 cursor-s-resize hover:opacity-50 transition-opacity"

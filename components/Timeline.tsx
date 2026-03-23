@@ -26,7 +26,6 @@ export default function Timeline() {
     dragOriginalEnd,
     updatePlanBlock,
     endDrag,
-    // Holding area drag
     holdingDragBlockId,
     unscheduledBlocks,
     removeUnscheduledBlock,
@@ -37,9 +36,23 @@ export default function Timeline() {
   const [dragStartY, setDragStartY] = useState<number | null>(null)
   const [tempBlockPosition, setTempBlockPosition] = useState<{ start: string; end: string } | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null)
-
-  // Ghost preview for holding-area drag
   const [ghostPreview, setGhostPreview] = useState<{ top: number; height: number; startTime: string; endTime: string } | null>(null)
+
+  // Current-time indicator
+  const [now, setNow] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const nowTotalMinutes = now.getHours() * 60 + now.getMinutes()
+  const windowStartMinutes = startHour * 60
+  const windowEndMinutes = endHour * 60
+  const isNowVisible = nowTotalMinutes >= windowStartMinutes && nowTotalMinutes <= windowEndMinutes
+  const nowPosition = isNowVisible
+    ? ((nowTotalMinutes - windowStartMinutes) / (windowEndMinutes - windowStartMinutes)) * 100
+    : 0
 
   const hourLabels = generateHourLabels(startHour, endHour)
   const totalHours = endHour - startHour
@@ -54,10 +67,8 @@ export default function Timeline() {
       const rect = timelineRef.current.getBoundingClientRect()
       const currentY = e.clientY - rect.top
 
-      // Update tooltip position
       setTooltipPosition({ x: e.clientX, y: e.clientY })
 
-      // Store initial position on first move
       if (dragStartY === null) {
         setDragStartY(currentY)
         return
@@ -93,7 +104,6 @@ export default function Timeline() {
 
       setTempBlockPosition(newTimes)
 
-      // Update the block in real-time
       updatePlanBlock(draggedBlockId, {
         start: newTimes.start,
         end: newTimes.end,
@@ -101,18 +111,15 @@ export default function Timeline() {
     }
 
     const handleMouseUp = () => {
-      // Finalize the drag
       endDrag()
       setDragStartY(null)
       setTempBlockPosition(null)
       setTooltipPosition(null)
     }
 
-    // Add event listeners
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
 
-    // Cleanup
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
@@ -160,7 +167,6 @@ export default function Timeline() {
       const clickedMinute = (y / rect.height) * (totalHours * 60) + startHour * 60
       const roundedMinute = Math.round(clickedMinute / 15) * 15
 
-      // Constrain to timeline bounds
       const maxStart = endHour * 60 - holdingBlock.durationMinutes
       const clampedStart = Math.max(startHour * 60, Math.min(roundedMinute, maxStart))
 
@@ -191,7 +197,6 @@ export default function Timeline() {
         e.clientY <= rect.bottom
 
       if (isOverTimeline && ghostPreview) {
-        // Convert to PlanBlock
         const startISO = createISODateTime(selectedDate, ghostPreview.startTime)
         const endISO = createISODateTime(selectedDate, ghostPreview.endTime)
 
@@ -233,14 +238,12 @@ export default function Timeline() {
   ])
 
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // Don't create new blocks when dragging
     if (isDragging || holdingDragBlockId) return
 
     const rect = e.currentTarget.getBoundingClientRect()
     const y = e.clientY - rect.top
     const clickedMinute = (y / rect.height) * (totalHours * 60) + (startHour * 60)
 
-    // Round to nearest 15 minutes
     const roundedMinute = Math.round(clickedMinute / 15) * 15
     const hours = Math.floor(roundedMinute / 60)
     const minutes = roundedMinute % 60
@@ -248,7 +251,6 @@ export default function Timeline() {
     const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
     const startDateTime = createISODateTime(selectedDate, startTime)
 
-    // Default 60-minute duration
     const endDate = new Date(parseISO(startDateTime))
     endDate.setMinutes(endDate.getMinutes() + 60)
     const endDateTime = endDate.toISOString()
@@ -275,7 +277,7 @@ export default function Timeline() {
   return (
     <div className="flex gap-4 h-full">
       {/* Hour labels */}
-      <div className="flex flex-col justify-between py-2 text-sm text-gray-500 w-16">
+      <div className="flex flex-col justify-between py-2 text-sm text-muted-foreground w-16">
         {hourLabels.map((label, index) => (
           <div key={index} className="text-right pr-2">
             {label}
@@ -284,25 +286,39 @@ export default function Timeline() {
       </div>
 
       {/* Timeline grid */}
-      <div ref={timelineRef} className="flex-1 relative border-l-2 border-gray-300">
+      <div ref={timelineRef} className="flex-1 relative border-l-2 border-border">
         {/* Hour lines */}
         {hourLabels.map((_, index) => (
           <div
             key={index}
-            className="absolute left-0 right-0 border-t border-gray-200"
+            className="absolute left-0 right-0 border-t border-border/50"
             style={{ top: `${(index / totalHours) * 100}%` }}
           />
         ))}
 
         {/* Click area for creating blocks */}
         <div
-          className="absolute inset-0 cursor-crosshair hover:bg-blue-50 hover:bg-opacity-30 transition-colors"
+          className="absolute inset-0 cursor-crosshair hover:bg-accent/30 transition-colors"
           onClick={handleTimelineClick}
           role="button"
           aria-label="Click to create a new plan block"
           tabIndex={0}
           style={{ cursor: isDragging || holdingDragBlockId ? 'default' : 'crosshair' }}
         />
+
+        {/* Current-time indicator */}
+        {isNowVisible && (
+          <div
+            className="absolute left-0 right-0 z-30 pointer-events-none flex items-center"
+            style={{ top: `${nowPosition}%` }}
+          >
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1.5 shrink-0" />
+            <div className="flex-1 h-0.5 bg-red-500" />
+            <span className="text-[10px] font-medium text-red-500 ml-1 shrink-0">
+              {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        )}
 
         {/* Busy events */}
         {busyEvents.map((event) => (
@@ -356,7 +372,7 @@ export default function Timeline() {
         {/* Drag/Resize Tooltip */}
         {isDragging && tooltipPosition && tempBlockPosition && (
           <div
-            className="fixed z-50 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm pointer-events-none"
+            className="fixed z-50 bg-popover text-popover-foreground px-3 py-2 rounded-lg shadow-lg text-sm pointer-events-none border border-border"
             style={{
               left: `${tooltipPosition.x + 15}px`,
               top: `${tooltipPosition.y + 15}px`,
@@ -365,7 +381,7 @@ export default function Timeline() {
             <div className="font-semibold">
               {formatTime(tempBlockPosition.start)} - {formatTime(tempBlockPosition.end)}
             </div>
-            <div className="text-xs text-gray-300">
+            <div className="text-xs text-muted-foreground">
               {getDurationMinutes(tempBlockPosition.start, tempBlockPosition.end)} min
             </div>
           </div>
