@@ -63,8 +63,8 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
     (set) => ({
       // Initial state
       selectedDate: new Date(),
-      startHour: 8,
-      endHour: 18,
+      startHour: 5,
+      endHour: 23,
       busyEvents: [],
       planBlocks: [],
       unscheduledBlocks: [],
@@ -161,7 +161,7 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
     }),
     {
       name: 'timebox-storage',
-      version: 3,
+      version: 4,
       partialize: (state) => ({
         planBlocks: state.planBlocks,
         unscheduledBlocks: state.unscheduledBlocks,
@@ -182,6 +182,11 @@ export const useTimeBoxStore = create<TimeBoxStore>()(
         }
         if (version < 3) {
           state.todoItems = state.todoItems || []
+        }
+        if (version < 4) {
+          // Update default time window only if user hasn't customized
+          if (state.startHour === 8) state.startHour = 5
+          if (state.endHour === 18) state.endHour = 23
         }
         return state as unknown as TimeBoxStore
       },
