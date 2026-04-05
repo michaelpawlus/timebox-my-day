@@ -1,95 +1,19 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { PlanBlock, UnscheduledBlock } from '../../lib/types'
 import { getColorForTitle } from '../../lib/categories'
 import { generateICS } from '../../lib/ics-generate'
+import { computeDayGaps, isoToTime, timeToMinutes } from '../../lib/week-utils'
 import { getSchedule, addPlanBlock, addUnscheduledBlock, removeBlock, clearPlanBlocks } from '../store'
-import { Gap, ScheduleView } from '../types'
+import { ScheduleView } from '../types'
 
 const DAY_START = '07:00'
 const DAY_END = '21:00'
 
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-function minutesToTime(m: number): string {
-  const hours = Math.floor(m / 60)
-  const mins = m % 60
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
-}
-
-function isoToTime(iso: string): string {
-  const d = parseISO(iso)
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
-}
-
-function computeGaps(schedule: ReturnType<typeof getSchedule>): Gap[] {
-  // Collect all scheduled intervals as [startMin, endMin]
-  const intervals: [number, number][] = []
-
-  for (const event of schedule.busy_events) {
-    if (event.allDay) continue
-    intervals.push([timeToMinutes(isoToTime(event.start)), timeToMinutes(isoToTime(event.end))])
-  }
-
-  for (const block of schedule.plan_blocks) {
-    intervals.push([timeToMinutes(isoToTime(block.start)), timeToMinutes(isoToTime(block.end))])
-  }
-
-  // Sort by start time
-  intervals.sort((a, b) => a[0] - b[0])
-
-  // Merge overlapping intervals
-  const merged: [number, number][] = []
-  for (const [s, e] of intervals) {
-    if (merged.length > 0 && s <= merged[merged.length - 1][1]) {
-      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], e)
-    } else {
-      merged.push([s, e])
-    }
-  }
-
-  // Find gaps within the day window
-  const gaps: Gap[] = []
-  const dayStartMin = timeToMinutes(DAY_START)
-  const dayEndMin = timeToMinutes(DAY_END)
-  let cursor = dayStartMin
-
-  for (const [s, e] of merged) {
-    const blockStart = Math.max(s, dayStartMin)
-    const blockEnd = Math.min(e, dayEndMin)
-
-    if (cursor < blockStart) {
-      const gapDuration = blockStart - cursor
-      if (gapDuration > 0) {
-        gaps.push({
-          start: minutesToTime(cursor),
-          end: minutesToTime(blockStart),
-          duration_minutes: gapDuration,
-        })
-      }
-    }
-    cursor = Math.max(cursor, blockEnd)
-  }
-
-  // Final gap to end of day
-  if (cursor < dayEndMin) {
-    gaps.push({
-      start: minutesToTime(cursor),
-      end: minutesToTime(dayEndMin),
-      duration_minutes: dayEndMin - cursor,
-    })
-  }
-
-  return gaps
-}
-
 export function showSchedule(): ScheduleView {
   const schedule = getSchedule()
-  const gaps = computeGaps(schedule)
+  const gaps = computeDayGaps(schedule.busy_events, schedule.plan_blocks, DAY_START, DAY_END)
 
   const totalScheduledMinutes = schedule.busy_events
     .filter(e => !e.allDay)

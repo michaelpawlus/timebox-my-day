@@ -1,4 +1,4 @@
-import { WeatherData, HourlyWeather } from '../types'
+import { WeatherData, HourlyWeather, DailyForecast } from '../types'
 
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 
@@ -137,6 +137,82 @@ export async function fetchWeather(): Promise<WeatherData> {
   }
 }
 
+export async function fetchMultiDayWeather(days: number): Promise<DailyForecast[]> {
+  const lat = process.env.OJ_LOCATION_LAT
+  const lon = process.env.OJ_LOCATION_LON
+
+  if (!lat || !lon) {
+    throw new Error('OJ_LOCATION_LAT and OJ_LOCATION_LON environment variables are required')
+  }
+
+  const params = new URLSearchParams({
+    latitude: lat,
+    longitude: lon,
+    daily: 'temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,wind_speed_10m_max,sunrise,sunset',
+    hourly: 'temperature_2m,precipitation_probability,weathercode',
+    temperature_unit: 'fahrenheit',
+    wind_speed_unit: 'mph',
+    timezone: 'auto',
+    forecast_days: String(days),
+  })
+
+  const response = await fetch(`${OPEN_METEO_URL}?${params}`)
+  if (!response.ok) {
+    throw new Error(`Open-Meteo API error: ${response.status} ${response.statusText}`)
+  }
+
+  const data = await response.json()
+  const daily = data.daily
+  const hourlyRaw = data.hourly || {}
+
+  const forecasts: DailyForecast[] = []
+
+  for (let i = 0; i < daily.time.length; i++) {
+    const date: string = daily.time[i]
+    const tempHigh: number = daily.temperature_2m_max[i]
+    const tempLow: number = daily.temperature_2m_min[i]
+    const precipChance: number = daily.precipitation_probability_max[i]
+    const windSpeed: number = daily.wind_speed_10m_max[i]
+    const weatherCode: number = daily.weathercode[i]
+    const sunrise = daily.sunrise[i]?.split('T')[1] || ''
+    const sunset = daily.sunset[i]?.split('T')[1] || ''
+    const condition = WEATHER_CODES[weatherCode] || 'unknown'
+
+    // Slice hourly data for this day (24 entries per day)
+    const hourlyStart = i * 24
+    const hourlyEnd = (i + 1) * 24
+    const hourly: HourlyWeather[] = (hourlyRaw.time || [])
+      .slice(hourlyStart, hourlyEnd)
+      .map((time: string, j: number) => ({
+        time,
+        temperature_f: hourlyRaw.temperature_2m?.[hourlyStart + j] ?? 70,
+        precipitation_probability: hourlyRaw.precipitation_probability?.[hourlyStart + j] ?? 50,
+        weather_code: hourlyRaw.weathercode?.[hourlyStart + j] ?? 0,
+      }))
+
+    const outdoorScore = computeOutdoorScore(tempHigh, tempLow, precipChance, windSpeed)
+    const bestOutdoorWindow = findBestOutdoorWindow(hourly)
+    const summary = `${condition}, high ${Math.round(tempHigh)}F / low ${Math.round(tempLow)}F, ${precipChance}% chance of rain, wind ${Math.round(windSpeed)} mph`
+
+    forecasts.push({
+      date,
+      temperature_high_f: tempHigh,
+      temperature_low_f: tempLow,
+      condition,
+      precipitation_chance: precipChance,
+      wind_speed_mph: windSpeed,
+      sunrise,
+      sunset,
+      best_outdoor_window: bestOutdoorWindow,
+      outdoor_score: outdoorScore,
+      summary,
+      hourly,
+    })
+  }
+
+  return forecasts
+}
+
 export function formatWeatherHuman(w: WeatherData): string {
   const lines = [
     `Weather: ${w.summary}`,
@@ -144,5 +220,17 @@ export function formatWeatherHuman(w: WeatherData): string {
     `Best outdoor window: ${w.best_outdoor_window}`,
     `Sunrise: ${w.sunrise} | Sunset: ${w.sunset}`,
   ]
+  return lines.join('\n')
+}
+
+export function formatMultiDayWeatherHuman(forecasts: DailyForecast[]): string {
+  const lines: string[] = [`${forecasts.length}-Day Forecast`, '']
+
+  for (const f of forecasts) {
+    const bar = '|'.repeat(Math.round(f.outdoor_score / 10))
+    lines.push(`  ${f.date}  ${f.summary}`)
+    lines.push(`             Outdoor: ${f.outdoor_score}/100 ${bar}  Best: ${f.best_outdoor_window}`)
+  }
+
   return lines.join('\n')
 }

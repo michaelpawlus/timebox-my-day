@@ -27,16 +27,33 @@ yargs(hideBin(process.argv))
   })
   .command(
     'weather',
-    'Fetch today\'s weather with outdoor score',
-    () => {},
+    'Fetch weather forecast with outdoor score',
+    (yargs) => {
+      return yargs.option('days', {
+        type: 'number',
+        default: 1,
+        description: 'Number of forecast days (1-7)',
+      })
+    },
     async (argv) => {
       try {
-        const { fetchWeather, formatWeatherHuman } = await import('./commands/weather')
-        const data = await fetchWeather()
-        if (argv.json) {
-          output(data, true)
+        const days = argv.days as number
+        if (days > 1) {
+          const { fetchMultiDayWeather, formatMultiDayWeatherHuman } = await import('./commands/weather')
+          const data = await fetchMultiDayWeather(days)
+          if (argv.json) {
+            output(data, true)
+          } else {
+            output(formatMultiDayWeatherHuman(data), false)
+          }
         } else {
-          output(formatWeatherHuman(data), false)
+          const { fetchWeather, formatWeatherHuman } = await import('./commands/weather')
+          const data = await fetchWeather()
+          if (argv.json) {
+            output(data, true)
+          } else {
+            output(formatWeatherHuman(data), false)
+          }
         }
       } catch (err) {
         errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
@@ -216,17 +233,323 @@ yargs(hideBin(process.argv))
     },
   )
   .command(
+    'backlog',
+    'Manage task backlog',
+    (yargs) => {
+      return yargs
+        .command(
+          'add',
+          'Add a backlog item',
+          (yargs) => {
+            return yargs
+              .option('title', { type: 'string', demandOption: true, description: 'Task title' })
+              .option('duration', { type: 'number', demandOption: true, description: 'Estimated duration in minutes' })
+              .option('priority', { type: 'string', choices: ['hard', 'soft', 'none'], default: 'none', description: 'Priority level' })
+              .option('deadline', { type: 'string', description: 'Deadline date (YYYY-MM-DD)' })
+              .option('outdoor', { type: 'boolean', default: false, description: 'Requires good weather' })
+              .option('daylight', { type: 'boolean', default: false, description: 'Requires daylight' })
+              .option('weekend', { type: 'boolean', default: false, description: 'Weekend only' })
+              .option('category', { type: 'string', description: 'Block category' })
+              .option('preferred-start', { type: 'string', description: 'Preferred window start (HH:MM)' })
+              .option('preferred-end', { type: 'string', description: 'Preferred window end (HH:MM)' })
+          },
+          async (argv) => {
+            try {
+              const { addItem } = await import('./commands/backlog')
+              const item = addItem({
+                title: argv.title as string,
+                duration: argv.duration as number,
+                priority: argv.priority as string,
+                deadline: argv.deadline as string | undefined,
+                outdoor: argv.outdoor as boolean,
+                daylight: argv.daylight as boolean,
+                weekend: argv.weekend as boolean,
+                category: argv.category as string | undefined,
+                preferredStart: argv['preferred-start'] as string | undefined,
+                preferredEnd: argv['preferred-end'] as string | undefined,
+              })
+              if (argv.json) {
+                output(item, true)
+              } else {
+                output(`Added: ${item.title} [${item.id.substring(0, 8)}]`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'list',
+          'List backlog items',
+          (yargs) => {
+            return yargs
+              .option('priority', { type: 'string', choices: ['hard', 'soft', 'none'], description: 'Filter by priority' })
+              .option('status', { type: 'string', choices: ['pending', 'scheduled', 'completed', 'all'], description: 'Filter by status' })
+          },
+          async (argv) => {
+            try {
+              const { listItems, formatBacklogHuman } = await import('./commands/backlog')
+              const items = listItems({
+                priority: argv.priority as string | undefined,
+                status: argv.status as string | undefined,
+              })
+              if (argv.json) {
+                output(items, true)
+              } else {
+                output(formatBacklogHuman(items), false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'update',
+          'Update a backlog item',
+          (yargs) => {
+            return yargs
+              .option('id', { type: 'string', demandOption: true, description: 'Item ID' })
+              .option('title', { type: 'string', description: 'New title' })
+              .option('duration', { type: 'number', description: 'New duration in minutes' })
+              .option('priority', { type: 'string', choices: ['hard', 'soft', 'none'], description: 'New priority' })
+              .option('deadline', { type: 'string', description: 'New deadline (YYYY-MM-DD)' })
+              .option('status', { type: 'string', choices: ['pending', 'scheduled', 'completed'], description: 'New status' })
+          },
+          async (argv) => {
+            try {
+              const { updateItem } = await import('./commands/backlog')
+              const { item, found } = updateItem(argv.id as string, {
+                title: argv.title as string | undefined,
+                duration: argv.duration as number | undefined,
+                priority: argv.priority as string | undefined,
+                deadline: argv.deadline as string | undefined,
+                status: argv.status as string | undefined,
+              })
+              if (!found) {
+                errorOut(`Item not found: ${argv.id}`, argv.json as boolean, 2)
+              }
+              if (argv.json) {
+                output(item, true)
+              } else {
+                output(`Updated: ${argv.id}`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'remove',
+          'Remove a backlog item',
+          (yargs) => {
+            return yargs.option('id', { type: 'string', demandOption: true, description: 'Item ID' })
+          },
+          async (argv) => {
+            try {
+              const { removeItem } = await import('./commands/backlog')
+              const { found } = removeItem(argv.id as string)
+              if (!found) {
+                errorOut(`Item not found: ${argv.id}`, argv.json as boolean, 2)
+              }
+              if (argv.json) {
+                output({ removed: argv.id }, true)
+              } else {
+                output(`Removed: ${argv.id}`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'complete',
+          'Mark a backlog item as completed',
+          (yargs) => {
+            return yargs.option('id', { type: 'string', demandOption: true, description: 'Item ID' })
+          },
+          async (argv) => {
+            try {
+              const { completeItem } = await import('./commands/backlog')
+              const { item, found } = completeItem(argv.id as string)
+              if (!found) {
+                errorOut(`Item not found: ${argv.id}`, argv.json as boolean, 2)
+              }
+              if (argv.json) {
+                output(item, true)
+              } else {
+                output(`Completed: ${argv.id}`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .demandCommand(1, 'Please specify a backlog subcommand')
+    },
+  )
+  .command(
+    'week',
+    'Manage weekly schedule',
+    (yargs) => {
+      return yargs
+        .command(
+          'show',
+          'Show weekly schedule with gaps',
+          (yargs) => {
+            return yargs.option('date', { type: 'string', description: 'Any date in the target week (YYYY-MM-DD)' })
+          },
+          async (argv) => {
+            try {
+              const { showWeek, formatWeekHuman } = await import('./commands/week')
+              const data = showWeek(argv.date as string | undefined)
+              if (argv.json) {
+                output(data, true)
+              } else {
+                output(formatWeekHuman(data, data.dailyGaps), false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'add',
+          'Add a block to a day',
+          (yargs) => {
+            return yargs
+              .option('date', { type: 'string', demandOption: true, description: 'Target date (YYYY-MM-DD)' })
+              .option('title', { type: 'string', demandOption: true, description: 'Block title' })
+              .option('start', { type: 'string', demandOption: true, description: 'Start time (HH:MM)' })
+              .option('end', { type: 'string', demandOption: true, description: 'End time (HH:MM)' })
+              .option('category', { type: 'string', description: 'Block category' })
+              .option('notes', { type: 'string', description: 'Optional notes' })
+          },
+          async (argv) => {
+            try {
+              const { addWeekBlock } = await import('./commands/week')
+              const { block, weekOf } = addWeekBlock({
+                date: argv.date as string,
+                title: argv.title as string,
+                start: argv.start as string,
+                end: argv.end as string,
+                category: argv.category as string | undefined,
+                notes: argv.notes as string | undefined,
+              })
+              if (argv.json) {
+                output({ block, weekOf }, true)
+              } else {
+                output(`Added: ${block.title} on ${argv.date} ${argv.start}-${argv.end} [${block.id.substring(0, 8)}]`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'remove',
+          'Remove a block from a day',
+          (yargs) => {
+            return yargs
+              .option('date', { type: 'string', demandOption: true, description: 'Target date (YYYY-MM-DD)' })
+              .option('id', { type: 'string', demandOption: true, description: 'Block ID' })
+          },
+          async (argv) => {
+            try {
+              const { removeWeekBlock } = await import('./commands/week')
+              const { found } = removeWeekBlock(argv.date as string, argv.id as string)
+              if (!found) {
+                errorOut(`Block not found: ${argv.id}`, argv.json as boolean, 2)
+              }
+              if (argv.json) {
+                output({ removed: argv.id }, true)
+              } else {
+                output(`Removed: ${argv.id}`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'clear',
+          'Clear plan blocks from a day or entire week',
+          (yargs) => {
+            return yargs.option('date', { type: 'string', description: 'Clear specific day (YYYY-MM-DD). Omit to clear entire week.' })
+          },
+          async (argv) => {
+            try {
+              const { clearWeekDay } = await import('./commands/week')
+              const { cleared, weekOf } = clearWeekDay(argv.date as string | undefined)
+              if (argv.json) {
+                output({ cleared, weekOf }, true)
+              } else {
+                output(`Cleared ${cleared} blocks from ${argv.date || `week of ${weekOf}`}`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'export',
+          'Export weekly schedule',
+          (yargs) => {
+            return yargs
+              .option('format', {
+                type: 'string',
+                choices: ['markdown'] as const,
+                demandOption: true,
+                description: 'Export format',
+              })
+              .option('date', { type: 'string', description: 'Any date in the target week (YYYY-MM-DD)' })
+          },
+          async (argv) => {
+            try {
+              const { exportWeek } = await import('./commands/week')
+              const result = exportWeek(argv.format as 'markdown', argv.date as string | undefined)
+              if (argv.json) {
+                output(result, true)
+              } else {
+                if (result.path) {
+                  output(`Exported to: ${result.path}`, false)
+                } else {
+                  output(result.content, false)
+                }
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .demandCommand(1, 'Please specify a week subcommand')
+    },
+  )
+  .command(
     'context',
-    'Get full day context (weather + workout + schedule + gaps)',
-    () => {},
+    'Get planning context (daily or weekly)',
+    (yargs) => {
+      return yargs
+        .option('week', { type: 'boolean', default: false, description: 'Get weekly context' })
+        .option('date', { type: 'string', description: 'Target date (for weekly context)' })
+    },
     async (argv) => {
       try {
-        const { getContext, formatContextHuman } = await import('./commands/context')
-        const data = await getContext()
-        if (argv.json) {
-          output(data, true)
+        if (argv.week) {
+          const { getWeeklyContext, formatWeeklyContextHuman } = await import('./commands/context')
+          const data = await getWeeklyContext(argv.date as string | undefined)
+          if (argv.json) {
+            output(data, true)
+          } else {
+            output(formatWeeklyContextHuman(data), false)
+          }
         } else {
-          output(formatContextHuman(data), false)
+          const { getContext, formatContextHuman } = await import('./commands/context')
+          const data = await getContext()
+          if (argv.json) {
+            output(data, true)
+          } else {
+            output(formatContextHuman(data), false)
+          }
         }
       } catch (err) {
         errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
