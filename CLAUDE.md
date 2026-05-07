@@ -28,7 +28,19 @@ npm run timebox -- <command> [--json]
 | `timebox weather --days N` | Multi-day forecast (1-7) with per-day outdoor scores |
 | `timebox workout` | Today's workout from workout-app CLI |
 
-### Backlog
+### Capture (Obsidian inbox)
+
+`timebox capture` writes to `$OBSIDIAN_VAULT_PATH/backlog/inbox.md` — the canonical home for non-code backlog. Code work goes to GitHub issues instead. See the global CLAUDE.md "Backlog Capture" rule and the `/capture` skill.
+
+| Command | Purpose |
+|---------|---------|
+| `timebox capture --title "..." [--tags task/house,weekend]` | Append item to Obsidian inbox |
+| `timebox capture ... [--duration N] [--priority hard\|soft\|none] [--deadline DATE]` | With metadata |
+| `timebox capture ... [--buffer N] [--notes "..."]` | With prep/cleanup buffer or notes |
+
+### Backlog (legacy — `~/.timebox/backlog.json`)
+
+These commands still operate on the legacy JSON store. Phase 6 will migrate them to read/write the Obsidian inbox; until then, `timebox capture` and `timebox backlog add` write to different stores.
 
 | Command | Purpose |
 |---------|---------|

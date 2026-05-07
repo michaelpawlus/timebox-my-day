@@ -525,6 +525,44 @@ yargs(hideBin(process.argv))
     },
   )
   .command(
+    'capture',
+    'Capture an idea/task to the Obsidian backlog inbox',
+    (yargs) => {
+      return yargs
+        .option('title', { type: 'string', demandOption: true, description: 'Item title' })
+        .option('tags', { type: 'string', description: 'Comma-separated tags (e.g. task/house,weekend)' })
+        .option('duration', { type: 'number', description: 'Estimated duration in minutes' })
+        .option('buffer', { type: 'number', description: 'Prep/cleanup buffer in minutes' })
+        .option('priority', { type: 'string', choices: ['hard', 'soft', 'none'], description: 'Priority level' })
+        .option('deadline', { type: 'string', description: 'Deadline (YYYY-MM-DD)' })
+        .option('notes', { type: 'string', description: 'Optional notes' })
+    },
+    async (argv) => {
+      try {
+        const { captureItem, formatCaptureHuman } = await import('./commands/capture')
+        const tags = argv.tags
+          ? (argv.tags as string).split(',').map(t => t.trim()).filter(t => t.length > 0)
+          : undefined
+        const result = captureItem({
+          title: argv.title as string,
+          tags,
+          duration: argv.duration as number | undefined,
+          buffer: argv.buffer as number | undefined,
+          priority: argv.priority as string | undefined,
+          deadline: argv.deadline as string | undefined,
+          notes: argv.notes as string | undefined,
+        })
+        if (argv.json) {
+          output(result, true)
+        } else {
+          output(formatCaptureHuman(result), false)
+        }
+      } catch (err) {
+        errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+      }
+    },
+  )
+  .command(
     'context',
     'Get planning context (daily or weekly)',
     (yargs) => {
