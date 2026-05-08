@@ -82,30 +82,98 @@ yargs(hideBin(process.argv))
     'calendar',
     'Calendar operations',
     (yargs) => {
-      return yargs.command(
-        'import <file>',
-        'Import events from an ICS file',
-        (yargs) => {
-          return yargs.positional('file', {
-            type: 'string',
-            description: 'Path to ICS file',
-            demandOption: true,
-          })
-        },
-        async (argv) => {
-          try {
-            const { importCalendar, formatImportHuman } = await import('./commands/calendar')
-            const result = await importCalendar(argv.file as string)
-            if (argv.json) {
-              output(result, true)
-            } else {
-              output(formatImportHuman(result), false)
+      return yargs
+        .command(
+          'import <file>',
+          'Import events from an ICS file',
+          (yargs) => {
+            return yargs.positional('file', {
+              type: 'string',
+              description: 'Path to ICS file',
+              demandOption: true,
+            })
+          },
+          async (argv) => {
+            try {
+              const { importCalendar, formatImportHuman } = await import('./commands/calendar')
+              const result = await importCalendar(argv.file as string)
+              if (argv.json) {
+                output(result, true)
+              } else {
+                output(formatImportHuman(result), false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
             }
-          } catch (err) {
-            errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
-          }
-        },
-      ).demandCommand(1, 'Please specify a calendar subcommand')
+          },
+        )
+        .command(
+          'import-photo <image>',
+          'Prepare a photo of a calendar for agent-driven event extraction',
+          (yargs) => {
+            return yargs
+              .positional('image', {
+                type: 'string',
+                description: 'Path to calendar photo (jpg/jpeg/png/webp/heic)',
+                demandOption: true,
+              })
+              .option('date', {
+                type: 'string',
+                description: 'Any date in the target week (YYYY-MM-DD). Defaults to current week.',
+              })
+          },
+          async (argv) => {
+            try {
+              const { importPhoto, formatImportPhotoHuman } = await import('./commands/calendar')
+              const briefing = importPhoto(argv.image as string, argv.date as string | undefined)
+              if (argv.json) {
+                output(briefing, true)
+              } else {
+                output(formatImportPhotoHuman(briefing), false)
+              }
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err)
+              const code = msg.startsWith('Image not found') ? 2 : 1
+              errorOut(msg, argv.json as boolean, code)
+            }
+          },
+        )
+        .command(
+          'add-events',
+          'Write events extracted from a photo into the week store',
+          (yargs) => {
+            return yargs
+              .option('events', {
+                type: 'string',
+                demandOption: true,
+                description: 'JSON array of events: [{title,date,start,end,location?,notes?}]',
+              })
+              .option('date', {
+                type: 'string',
+                description: 'Constrain writes to the week containing this date (YYYY-MM-DD)',
+              })
+          },
+          async (argv) => {
+            try {
+              const { addEventsFromPhoto, formatAddEventsHuman } = await import('./commands/calendar')
+              let parsed: unknown
+              try {
+                parsed = JSON.parse(argv.events as string)
+              } catch (err) {
+                throw new Error(`Invalid JSON for --events: ${err instanceof Error ? err.message : String(err)}`)
+              }
+              const result = addEventsFromPhoto(parsed as never, argv.date as string | undefined)
+              if (argv.json) {
+                output(result, true)
+              } else {
+                output(formatAddEventsHuman(result), false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .demandCommand(1, 'Please specify a calendar subcommand')
     },
   )
   .command(

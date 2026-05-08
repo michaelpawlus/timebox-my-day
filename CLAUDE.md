@@ -51,6 +51,14 @@ These commands still operate on the legacy JSON store. Phase 6 will migrate them
 | `timebox backlog remove --id <id>` | Remove backlog item |
 | `timebox backlog complete --id <id>` | Mark item completed |
 
+### Calendar Import
+
+| Command | Purpose |
+|---------|---------|
+| `timebox calendar import <file>` | Import ICS file as busy events (daily store) |
+| `timebox calendar import-photo <image> [--date DATE]` | Prepare a photo of an Outlook/calendar view for agent-driven extraction. Returns target week + existing events as JSON briefing. **Does not call any API** — the agent reads the image. |
+| `timebox calendar add-events --events '[...]' [--date DATE]` | Write events extracted from a photo into the week store. Each event: `{title, date, start, end, location?, notes?}`. Dedupes by hash of start/end/title. |
+
 ### Weekly Schedule
 
 | Command | Purpose |
@@ -71,7 +79,6 @@ These commands still operate on the legacy JSON store. Phase 6 will migrate them
 | `timebox schedule remove --id <id>` | Remove a block |
 | `timebox schedule clear` | Clear plan blocks (keeps busy events) |
 | `timebox schedule export --format ics\|markdown` | Export to ICS or Obsidian |
-| `timebox calendar import <file>` | Import ICS file as busy events |
 
 ## Weekly Planning Workflow
 
@@ -80,7 +87,7 @@ When the user asks you to plan their week, follow this workflow:
 1. **Gather context**: Run `timebox context --week --date <monday> --json` to get 7-day weather, current schedule, and pending backlog
 2. **Ask for tasks**: Ask the user what they need to accomplish this week — accept conversational input ("I need to mow the lawn, do a 5-mile run, install shelves, and write a blog post")
 3. **Add to backlog**: Parse tasks and add them via `timebox backlog add` with appropriate priority, duration, and constraints
-4. **Import calendar**: If the user provides an ICS file, add meetings via `timebox week add`
+4. **Import calendar**: If the user provides an ICS file, add meetings via `timebox week add`. If the user provides a *photo* of their calendar, follow the Photo Calendar Import Workflow below.
 5. **Schedule fixed blocks first**: Meetings and immovable commitments
 6. **Weather-aware outdoor tasks**: Check per-day outdoor scores — schedule outdoor tasks (running, lawn work, etc.) on the best weather days during the best outdoor windows
 7. **Deep focus placement**: Schedule focus blocks >= 120 min, preferably mornings (09:00-12:00)
@@ -90,6 +97,34 @@ When the user asks you to plan their week, follow this workflow:
 11. **Verify**: Run `timebox week show --json` to confirm no conflicts and reasonable gaps
 12. **Mark scheduled**: Run `timebox backlog update --id <id> --status scheduled` for items placed
 13. **Export**: Run `timebox week export --format markdown` — user photographs output for Skylight
+
+## Photo Calendar Import Workflow
+
+The user's work calendar lives in corporate Outlook; ICS export and Microsoft Graph aren't available. They already photograph their Outlook week to upload to the Skylight Sidekick app — this workflow reuses that same photo for planning.
+
+**The CLI does not call any vision API.** Vision parsing is your job (Claude Code reads images natively). The CLI shepherds the workflow and writes the events you extract.
+
+When the user shares a photo of their calendar (path or image attachment), follow this flow:
+
+1. **Brief yourself**: Run `timebox calendar import-photo <path> [--date YYYY-MM-DD] --json`. The output gives you:
+   - `image_path` — absolute path to read
+   - `week_of` + `week_dates` — the target Monday and the 7 dates the events must fall within
+   - `existing_events` — already in the week store (use to dedupe and avoid suggesting redundant entries)
+2. **Read the image** with the Read tool (Claude Code reads images natively).
+3. **Extract events** as a JSON array. Each event must match the shape the briefing returned:
+   ```json
+   [{"title": "1:1 with Sam", "date": "2026-05-07", "start": "10:00", "end": "10:30", "location": "Teams"}]
+   ```
+   - Times are 24-hour `HH:MM`. Convert any AM/PM you read in the image.
+   - Dates are `YYYY-MM-DD` and must fall within `week_dates`.
+4. **Confirm with the user in chat** before writing. Show the extracted events as a compact list. Vision OCR misreads — let the user correct titles, times, or drop events.
+5. **Write**: Run `timebox calendar add-events --events '<JSON-array>' [--date YYYY-MM-DD] --json`.
+   - Pass `--date` to constrain writes to a specific week (events outside that week are skipped, not silently misplaced).
+   - The command dedupes by hash of `start+end+title` — re-running is safe.
+   - Photo-extracted events get IDs prefixed `photo-` and `source: "photo"`.
+6. **Verify**: Run `timebox week show --date <monday> --json` to confirm the events landed.
+
+After step 5, the photo's events are in the week store as busy events alongside any ICS or manually-added meetings — `week show`, `context --week`, and the synthesizer (Phase 5) all see them uniformly.
 
 ## Scheduling Heuristics
 

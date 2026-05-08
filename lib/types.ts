@@ -5,7 +5,7 @@ export interface BusyEvent {
   start: string;         // ISO 8601 in local time
   end: string;           // ISO 8601 in local time
   location?: string;
-  source: 'ics' | 'csv-ics';
+  source: 'ics' | 'csv-ics' | 'photo';
   allDay?: boolean;
 }
 
