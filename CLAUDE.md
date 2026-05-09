@@ -51,6 +51,21 @@ These commands still operate on the legacy JSON store. Phase 6 will migrate them
 | `timebox backlog remove --id <id>` | Remove backlog item |
 | `timebox backlog complete --id <id>` | Mark item completed |
 
+### Code Catalog (cross-repo issue index)
+
+`timebox catalog refresh` scans `~/projects/*`, runs `gh issue list` per repo (any repo with a `github.com` remote), heuristically scores each issue's LOE (S/M/L/XL) and impact (low/med/high), and writes `~/.timebox/code-catalog.json`. The synthesizer (Phase 5) reads this file instead of doing per-repo network calls at plan time.
+
+| Command | Purpose |
+|---------|---------|
+| `timebox catalog refresh [--root PATH]` | Refresh the catalog. Defaults to `~/projects`. Drop a `.timebox-skip` file in any repo to exclude it. |
+| `timebox catalog list [--repo X] [--max-loe S\|M\|L\|XL] [--impact low\|med\|high]` | Read the catalog with filters. `--repo` is substring match against `owner/name`; `--max-loe` is inclusive (`M` returns S+M). |
+
+**Scoring is hybrid (label-first, then heuristic):**
+- LOE: `loe:S/M/L/XL` or `size:S/M/L/XL` labels override everything; otherwise labels like `good first issue`/`epic` map directly; otherwise body length is the fallback signal (S < 200 chars, M < 800, L < 2000, XL ≥ 2000).
+- Impact: `impact:high/med/low` or `priority:p0/p1` labels override; otherwise `bug/critical/urgent` → high, `feature/enhancement` → med, `documentation/chore` → low. Default is `med`.
+
+To override the agent's inference, add a label to the issue and re-run `refresh`.
+
 ### Calendar Import
 
 | Command | Purpose |
@@ -147,8 +162,9 @@ After step 5, the photo's events are in the week store as busy events alongside 
   - `cli/store.ts` — Daily schedule persistence (~/.timebox/schedule.json)
   - `cli/backlog-store.ts` — Backlog persistence (~/.timebox/backlog.json)
   - `cli/week-store.ts` — Weekly schedule persistence (~/.timebox/weeks/<monday>.json)
+  - `cli/catalog-store.ts` — Code catalog persistence (~/.timebox/code-catalog.json)
   - `cli/types.ts` — CLI-specific types
-  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, week)
+  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, week, catalog)
 
 ## Environment Variables
 

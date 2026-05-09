@@ -631,6 +631,72 @@ yargs(hideBin(process.argv))
     },
   )
   .command(
+    'catalog',
+    'Manage cross-repo code work catalog',
+    (yargs) => {
+      return yargs
+        .command(
+          'refresh',
+          'Refresh code catalog by scanning ~/projects/* GitHub repos',
+          (yargs) => {
+            return yargs.option('root', {
+              type: 'string',
+              description: 'Override projects root (defaults to ~/projects)',
+            })
+          },
+          async (argv) => {
+            try {
+              const { refreshCatalog, formatRefreshHuman } = await import('./commands/catalog')
+              const result = await refreshCatalog({ root: argv.root as string | undefined })
+              if (argv.json) {
+                output(result, true)
+              } else {
+                output(formatRefreshHuman(result), false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'list',
+          'List catalog issues with optional filters',
+          (yargs) => {
+            return yargs
+              .option('repo', { type: 'string', description: 'Substring match against owner/name' })
+              .option('max-loe', {
+                type: 'string',
+                choices: ['S', 'M', 'L', 'XL'] as const,
+                description: 'Cap level of effort (e.g. M includes S and M)',
+              })
+              .option('impact', {
+                type: 'string',
+                choices: ['low', 'med', 'high'] as const,
+                description: 'Filter by impact',
+              })
+          },
+          async (argv) => {
+            try {
+              const { listCatalog, formatListHuman } = await import('./commands/catalog')
+              const result = listCatalog({
+                repo: argv.repo as string | undefined,
+                maxLoe: argv['max-loe'] as 'S' | 'M' | 'L' | 'XL' | undefined,
+                impact: argv.impact as 'low' | 'med' | 'high' | undefined,
+              })
+              if (argv.json) {
+                output(result, true)
+              } else {
+                output(formatListHuman(result), false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .demandCommand(1, 'Please specify a catalog subcommand')
+    },
+  )
+  .command(
     'context',
     'Get planning context (daily or weekly)',
     (yargs) => {
