@@ -38,6 +38,19 @@ npm run timebox -- <command> [--json]
 | `timebox capture ... [--duration N] [--priority hard\|soft\|none] [--deadline DATE]` | With metadata |
 | `timebox capture ... [--buffer N] [--notes "..."]` | With prep/cleanup buffer or notes |
 
+### Refine (Obsidian inbox metadata pass)
+
+`timebox capture` is intentionally low-friction (title + tags). Refinement is the batch pass that fills in `duration::`, `priority::`, and a domain tag — what the Phase 5 synthesizer needs to schedule an item. **Agent-driven**: the briefing emits JSON of unrefined items; the agent asks the user in chat (via `AskUserQuestion`); the agent writes back via `apply`. Item IDs are short hashes of `title + captured`, returned by the briefing.
+
+| Command | Purpose |
+|---------|---------|
+| `timebox backlog refine [--limit N]` | Briefing of unrefined inbox items with what's missing per item. **Start here.** |
+| `timebox backlog refine apply --id <id> [--duration N] [--priority hard\|soft\|none]` | Write metadata back to the inbox item |
+| `timebox backlog refine apply --id <id> [--tags task/house,weekend] [--remove-tags ...]` | Add or remove tags |
+| `timebox backlog refine apply --id <id> [--deadline YYYY-MM-DD] [--notes "..."] [--buffer N]` | Other fields |
+| `timebox backlog refine apply --id <id> ... --dry-run` | Preview the rewritten block without writing |
+| `timebox backlog refine delete --id <id>` | Remove the item entirely (e.g. no longer relevant) |
+
 ### Backlog (legacy — `~/.timebox/backlog.json`)
 
 These commands still operate on the legacy JSON store. Phase 6 will migrate them to read/write the Obsidian inbox; until then, `timebox capture` and `timebox backlog add` write to different stores.
@@ -141,6 +154,23 @@ When the user shares a photo of their calendar (path or image attachment), follo
 
 After step 5, the photo's events are in the week store as busy events alongside any ICS or manually-added meetings — `week show`, `context --week`, and the synthesizer (Phase 5) all see them uniformly.
 
+## Backlog Refinement Workflow
+
+When the user asks to "refine the backlog", "fill in metadata", or you notice the inbox has unrefined items before planning, follow this flow:
+
+1. **Brief yourself**: Run `timebox backlog refine --json [--limit N]`. Output gives `items[]` with `id`, `title`, `missing` (subset of `duration` / `priority` / `domainTag`), and `suggestedQuestions`.
+2. **Bail early** if `unrefinedCount === 0` — nothing to do.
+3. **For each item, ask the user in chat using `AskUserQuestion`.** Group questions by item (one item at a time keeps it focused). Reasonable option sets:
+   - **Duration**: short (15) / medium (30) / long (60) / longer (90+) — or accept "Other" for a custom value.
+   - **Priority**: `hard` (deadline) / `soft` (this week) / `none` (whenever).
+   - **Domain tag**: `task/house` / `task/personal` / `task/learning` / `task/errand` / `task/admin`.
+   Skip prompts for fields the item already has — only ask about what's in `missing`.
+4. **Apply** with `timebox backlog refine apply --id <id> --duration N --priority X --tags task/foo --json`. Tags pass via `--tags` are *added* (not replaced); use `--remove-tags` to drop existing ones.
+5. **Offer to delete** items the user calls out as no longer relevant: `timebox backlog refine delete --id <id> --json`.
+6. **Do not loop forever.** Refine in batches — if the user has 20 unrefined items, suggest doing the top 5 now and the rest later. Use `--limit` on the briefing to bound the work.
+
+The synthesizer (Phase 5) will tolerate unrefined items with sensible defaults, so refinement is opportunistic — don't block planning on it.
+
 ## Scheduling Heuristics
 
 - **Day window**: 07:00 - 21:00
@@ -163,8 +193,9 @@ After step 5, the photo's events are in the week store as busy events alongside 
   - `cli/backlog-store.ts` — Backlog persistence (~/.timebox/backlog.json)
   - `cli/week-store.ts` — Weekly schedule persistence (~/.timebox/weeks/<monday>.json)
   - `cli/catalog-store.ts` — Code catalog persistence (~/.timebox/code-catalog.json)
+  - `cli/inbox-store.ts` — Obsidian inbox.md parser/writer (shared by capture, refine, and Phase 5 synthesizer)
   - `cli/types.ts` — CLI-specific types
-  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, week, catalog)
+  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, week, catalog, capture, refine)
 
 ## Environment Variables
 

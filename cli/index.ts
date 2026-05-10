@@ -452,6 +452,103 @@ yargs(hideBin(process.argv))
             }
           },
         )
+        .command(
+          'refine',
+          'Briefing of unrefined Obsidian inbox items (default), or apply/delete subcommand',
+          (yargs) => {
+            return yargs
+              .command(
+                'apply',
+                'Apply metadata updates to a specific inbox item',
+                (yargs) => {
+                  return yargs
+                    .option('id', { type: 'string', demandOption: true, description: 'Inbox item ID (from briefing)' })
+                    .option('duration', { type: 'number', description: 'Duration in minutes' })
+                    .option('buffer', { type: 'number', description: 'Prep/cleanup buffer in minutes' })
+                    .option('priority', { type: 'string', choices: ['hard', 'soft', 'none'], description: 'Priority' })
+                    .option('deadline', { type: 'string', description: 'Deadline (YYYY-MM-DD)' })
+                    .option('notes', { type: 'string', description: 'Free-text notes' })
+                    .option('tags', { type: 'string', description: 'Comma-separated tags to add (e.g. task/house,weekend)' })
+                    .option('remove-tags', { type: 'string', description: 'Comma-separated tags to remove' })
+                    .option('dry-run', { type: 'boolean', default: false, description: 'Preview the diff without writing' })
+                },
+                async (argv) => {
+                  try {
+                    const { refineApply, formatRefineApplyHuman } = await import('./commands/refine')
+                    const tags = argv.tags
+                      ? (argv.tags as string).split(',').map(t => t.trim()).filter(t => t.length > 0)
+                      : undefined
+                    const removeTags = argv['remove-tags']
+                      ? (argv['remove-tags'] as string).split(',').map(t => t.trim()).filter(t => t.length > 0)
+                      : undefined
+                    const result = refineApply({
+                      id: argv.id as string,
+                      duration: argv.duration as number | undefined,
+                      buffer: argv.buffer as number | undefined,
+                      priority: argv.priority as string | undefined,
+                      deadline: argv.deadline as string | undefined,
+                      notes: argv.notes as string | undefined,
+                      tags,
+                      removeTags,
+                      dryRun: argv['dry-run'] as boolean,
+                    })
+                    if (!result.found) {
+                      errorOut(`Item not found: ${argv.id}`, argv.json as boolean, 2)
+                    }
+                    if (argv.json) {
+                      output(result, true)
+                    } else {
+                      output(formatRefineApplyHuman(result), false)
+                    }
+                  } catch (err) {
+                    errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+                  }
+                },
+              )
+              .command(
+                'delete',
+                'Remove an inbox item entirely',
+                (yargs) => {
+                  return yargs.option('id', { type: 'string', demandOption: true, description: 'Inbox item ID' })
+                },
+                async (argv) => {
+                  try {
+                    const { refineDelete, formatRefineDeleteHuman } = await import('./commands/refine')
+                    const result = refineDelete({ id: argv.id as string })
+                    if (!result.found) {
+                      errorOut(`Item not found: ${argv.id}`, argv.json as boolean, 2)
+                    }
+                    if (argv.json) {
+                      output(result, true)
+                    } else {
+                      output(formatRefineDeleteHuman(result), false)
+                    }
+                  } catch (err) {
+                    errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+                  }
+                },
+              )
+              .option('limit', { type: 'number', description: 'Cap the number of unrefined items returned' })
+              .command(
+                '$0',
+                'Briefing of unrefined items in the Obsidian inbox',
+                () => {},
+                async (argv) => {
+                  try {
+                    const { refineList, formatRefineBriefingHuman } = await import('./commands/refine')
+                    const briefing = refineList({ limit: argv.limit as number | undefined })
+                    if (argv.json) {
+                      output(briefing, true)
+                    } else {
+                      output(formatRefineBriefingHuman(briefing), false)
+                    }
+                  } catch (err) {
+                    errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+                  }
+                },
+              )
+          },
+        )
         .demandCommand(1, 'Please specify a backlog subcommand')
     },
   )
