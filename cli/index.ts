@@ -794,6 +794,31 @@ yargs(hideBin(process.argv))
     },
   )
   .command(
+    'plan-day',
+    'Synthesize 3 archetype day plans from all sources',
+    (yargs) => {
+      return yargs
+        .option('date', { type: 'string', description: 'Target date (YYYY-MM-DD). Defaults to today.' })
+        .option('apply', { type: 'number', description: 'Apply plan N (1-indexed) — writes its blocks to the week store' })
+    },
+    async (argv) => {
+      try {
+        const { planDay, formatPlanDayHuman } = await import('./commands/plan-day')
+        const result = await planDay({
+          date: argv.date as string | undefined,
+          apply: argv.apply as number | undefined,
+        })
+        if (argv.json) {
+          output(result, true)
+        } else {
+          output(formatPlanDayHuman(result), false)
+        }
+      } catch (err) {
+        errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+      }
+    },
+  )
+  .command(
     'context',
     'Get planning context (daily or weekly)',
     (yargs) => {

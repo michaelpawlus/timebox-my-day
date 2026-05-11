@@ -79,6 +79,26 @@ These commands still operate on the legacy JSON store. Phase 6 will migrate them
 
 To override the agent's inference, add a label to the issue and re-run `refresh`.
 
+### Plan Day (synthesizer)
+
+`timebox plan-day` reads the week store (busy events + existing plan blocks for the target date), the Obsidian inbox, the code catalog, today's weather, and today's workout, then produces 2-3 archetype day plans with a one-line rationale each. The agent shows the plans to the user, the user picks one, and `--apply N` writes that plan's blocks to the week store.
+
+| Command | Purpose |
+|---------|---------|
+| `timebox plan-day [--date YYYY-MM-DD]` | Synthesize 3 archetype plans for the target date (defaults to today) |
+| `timebox plan-day ... --apply N` | Write plan N's blocks (1-indexed) to the week store |
+
+**Archetypes:**
+- **Deep Focus AM** — 1-2 long focus blocks (≥90m) in the morning; small items in the afternoon
+- **Errand Sweep** — quick tasks (≤30m core) bundled in the morning; the largest PM gap goes to one focus block
+- **Outdoor Optimized** — only emitted when `weather.outdoor_score >= 60` AND at least one outdoor task exists. Outdoor task anchored at `best_outdoor_window`; indoor work fills the rest.
+
+**Time budgets:** Each backlog item is sized as `core + prep + recovery` minutes. Defaults per domain (`task/personal` +10/+45, `task/house` +5/+10, `task/code` +5/+0, `task/exercise` +10/+30, …) live in `lib/time-budgets.ts`. An item's `buffer::` field overrides the default (split evenly between prep and recovery). Catalog issues are sized by LOE (S=30, M=60, L=90, XL=120) with a +5 code context-load buffer.
+
+**Tolerates missing metadata:** inbox items without `duration::` default to 30m; without `priority::` default to `none`. The synthesizer never blocks on unrefined items — refine opportunistically with `timebox backlog refine`.
+
+**Workout & weather:** only fetched when the target date is today (workout-app CLI only knows about today; weather is only meaningful for now/forward). For other dates, both are skipped gracefully.
+
 ### Calendar Import
 
 | Command | Purpose |
@@ -169,7 +189,19 @@ When the user asks to "refine the backlog", "fill in metadata", or you notice th
 5. **Offer to delete** items the user calls out as no longer relevant: `timebox backlog refine delete --id <id> --json`.
 6. **Do not loop forever.** Refine in batches — if the user has 20 unrefined items, suggest doing the top 5 now and the rest later. Use `--limit` on the briefing to bound the work.
 
-The synthesizer (Phase 5) will tolerate unrefined items with sensible defaults, so refinement is opportunistic — don't block planning on it.
+The synthesizer (`timebox plan-day`) tolerates unrefined items with sensible defaults, so refinement is opportunistic — don't block planning on it.
+
+## Plan-Day Workflow
+
+When the user asks "plan my day", "what should I work on today", or similar — and the target is a *single* day rather than a full week:
+
+1. **Synthesize**: Run `timebox plan-day --date YYYY-MM-DD --json` (omit `--date` for today). The output is 2-3 archetype plans with a one-line rationale each.
+2. **Present**: Show the user the rationales side-by-side (or the human format with `--json` omitted). Highlight differences: which one has deep focus, which has the workout in the best outdoor window, which one fits the most tasks.
+3. **Pick one**: Ask the user which archetype to apply, or let them ask for tweaks ("swap the long run for after lunch").
+4. **Apply**: Run `timebox plan-day --date <same date> --apply <N>` where N is 1-indexed. This appends the plan's blocks to the week store. Existing plan blocks are preserved (clear with `timebox week clear --date X` first if the user wants a fresh slate).
+5. **Verify**: `timebox week show --date <date>` to confirm.
+
+For a *weekly* request, the Weekly Planning Workflow above still applies — `plan-day` is the single-day variant that consumes the same source pipeline.
 
 ## Scheduling Heuristics
 
@@ -195,7 +227,8 @@ The synthesizer (Phase 5) will tolerate unrefined items with sensible defaults, 
   - `cli/catalog-store.ts` — Code catalog persistence (~/.timebox/code-catalog.json)
   - `cli/inbox-store.ts` — Obsidian inbox.md parser/writer (shared by capture, refine, and Phase 5 synthesizer)
   - `cli/types.ts` — CLI-specific types
-  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, week, catalog, capture, refine)
+  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, week, catalog, capture, refine, plan-day)
+- `lib/time-budgets.ts` — Domain → prep/recovery profiles consumed by the plan-day synthesizer
 
 ## Environment Variables
 
