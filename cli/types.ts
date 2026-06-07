@@ -1,4 +1,5 @@
-import { BusyEvent, PlanBlock, UnscheduledBlock, BacklogItem, Gap } from '../lib/types'
+import { BusyEvent, PlanBlock, UnscheduledBlock, Gap } from '../lib/types'
+import { InboxStatus } from './inbox-store'
 
 // Re-export Gap from lib for backward compatibility
 export type { Gap }
@@ -63,8 +64,16 @@ export interface ContextData {
 
 // Weekly planning types
 
-export interface Backlog {
-  items: BacklogItem[]
+// A backlog item as derived from the Obsidian inbox (canonical source).
+export interface BacklogView {
+  id: string
+  title: string
+  durationMinutes?: number
+  priority: 'hard' | 'soft' | 'none'
+  deadline?: string
+  status: InboxStatus
+  tags: string[]
+  done: boolean
 }
 
 export interface DayPlan {
@@ -104,6 +113,6 @@ export interface WeeklyContextData {
   weekOf: string
   weather: DailyForecast[] | null
   schedule: WeekSchedule
-  backlog: BacklogItem[]
+  backlog: BacklogView[]
   dailyGaps: DayGaps[]
 }

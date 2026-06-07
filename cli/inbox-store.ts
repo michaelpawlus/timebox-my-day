@@ -14,6 +14,8 @@ export interface InboxItem {
 
 export type MissingField = 'duration' | 'priority' | 'domainTag'
 
+export type InboxStatus = 'pending' | 'scheduled' | 'completed'
+
 export function getInboxPath(): string {
   const vault = process.env.OBSIDIAN_VAULT_PATH
   if (!vault) {
@@ -22,7 +24,7 @@ export function getInboxPath(): string {
   return path.join(vault, 'backlog', 'inbox.md')
 }
 
-function computeId(title: string, captured: string): string {
+export function computeItemId(title: string, captured: string): string {
   return crypto.createHash('sha1').update(`${title}|${captured}`).digest('hex').slice(0, 8)
 }
 
@@ -99,13 +101,27 @@ export function readInbox(): InboxRead {
   if (current) items.push(current)
 
   for (const item of items) {
-    item.id = computeId(item.title, item.fields.captured || '')
+    item.id = computeItemId(item.title, item.fields.captured || '')
   }
   return { path: p, raw, lines, items }
 }
 
 export function findItemById(items: InboxItem[], id: string): InboxItem | undefined {
   return items.find(it => it.id === id)
+}
+
+export function itemStatus(item: InboxItem): InboxStatus {
+  if (item.done) return 'completed'
+  if ((item.fields.status || '').toLowerCase() === 'scheduled') return 'scheduled'
+  return 'pending'
+}
+
+function todayISO(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export function classifyMissing(item: InboxItem): { missing: MissingField[]; refined: boolean } {
@@ -118,16 +134,20 @@ export function classifyMissing(item: InboxItem): { missing: MissingField[]; ref
 }
 
 export interface ApplyUpdates {
+  title?: string
   duration?: number
   buffer?: number
   priority?: 'hard' | 'soft' | 'none'
   deadline?: string
   notes?: string
+  status?: InboxStatus
+  done?: boolean
+  completed?: string
   addTags?: string[]
   removeTags?: string[]
 }
 
-const FIELD_ORDER = ['duration', 'buffer', 'priority', 'deadline', 'captured', 'notes']
+const FIELD_ORDER = ['duration', 'buffer', 'priority', 'status', 'deadline', 'captured', 'completed', 'notes']
 
 export function buildItemBlock(item: InboxItem, updates: ApplyUpdates = {}): string[] {
   const removeSet = new Set((updates.removeTags || []).map(t => t.replace(/^#/, '')))
@@ -136,9 +156,7 @@ export function buildItemBlock(item: InboxItem, updates: ApplyUpdates = {}): str
     const norm = t.replace(/^#/, '').trim()
     if (norm.length > 0 && !tags.includes(norm)) tags.push(norm)
   }
-  const checkbox = item.done ? '[x]' : '[ ]'
-  const tagStr = tags.map(t => `#${t}`).join(' ')
-  const titleLine = tagStr ? `- ${checkbox} ${item.title} ${tagStr}` : `- ${checkbox} ${item.title}`
+  const title = updates.title !== undefined ? updates.title : item.title
 
   const fields: Record<string, string> = { ...item.fields }
   if (updates.duration !== undefined) fields.duration = String(updates.duration)
@@ -146,6 +164,30 @@ export function buildItemBlock(item: InboxItem, updates: ApplyUpdates = {}): str
   if (updates.priority !== undefined) fields.priority = updates.priority
   if (updates.deadline !== undefined) fields.deadline = updates.deadline
   if (updates.notes !== undefined) fields.notes = updates.notes
+
+  // Status drives both the checkbox and the status::/completed:: fields.
+  let done = item.done
+  if (updates.status !== undefined) {
+    if (updates.status === 'completed') {
+      done = true
+      delete fields.status
+      if (!fields.completed) fields.completed = updates.completed || todayISO()
+    } else if (updates.status === 'scheduled') {
+      done = false
+      fields.status = 'scheduled'
+      delete fields.completed
+    } else {
+      done = false
+      delete fields.status
+      delete fields.completed
+    }
+  }
+  if (updates.completed !== undefined) fields.completed = updates.completed
+  if (updates.done !== undefined) done = updates.done
+
+  const checkbox = done ? '[x]' : '[ ]'
+  const tagStr = tags.map(t => `#${t}`).join(' ')
+  const titleLine = tagStr ? `- ${checkbox} ${title} ${tagStr}` : `- ${checkbox} ${title}`
 
   const orderedKeys: string[] = []
   for (const k of FIELD_ORDER) {
