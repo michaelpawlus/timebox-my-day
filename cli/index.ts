@@ -307,34 +307,30 @@ yargs(hideBin(process.argv))
       return yargs
         .command(
           'add',
-          'Add a backlog item',
+          'Add a backlog item (writes to the Obsidian inbox; alias for capture)',
           (yargs) => {
             return yargs
               .option('title', { type: 'string', demandOption: true, description: 'Task title' })
-              .option('duration', { type: 'number', demandOption: true, description: 'Estimated duration in minutes' })
+              .option('duration', { type: 'number', description: 'Estimated duration in minutes' })
               .option('priority', { type: 'string', choices: ['hard', 'soft', 'none'], default: 'none', description: 'Priority level' })
               .option('deadline', { type: 'string', description: 'Deadline date (YYYY-MM-DD)' })
+              .option('tags', { type: 'string', description: 'Comma-separated tags (e.g. task/house,outdoor)' })
               .option('outdoor', { type: 'boolean', default: false, description: 'Requires good weather' })
               .option('daylight', { type: 'boolean', default: false, description: 'Requires daylight' })
               .option('weekend', { type: 'boolean', default: false, description: 'Weekend only' })
-              .option('category', { type: 'string', description: 'Block category' })
-              .option('preferred-start', { type: 'string', description: 'Preferred window start (HH:MM)' })
-              .option('preferred-end', { type: 'string', description: 'Preferred window end (HH:MM)' })
           },
           async (argv) => {
             try {
               const { addItem } = await import('./commands/backlog')
               const item = addItem({
                 title: argv.title as string,
-                duration: argv.duration as number,
+                duration: argv.duration as number | undefined,
                 priority: argv.priority as string,
                 deadline: argv.deadline as string | undefined,
                 outdoor: argv.outdoor as boolean,
                 daylight: argv.daylight as boolean,
                 weekend: argv.weekend as boolean,
-                category: argv.category as string | undefined,
-                preferredStart: argv['preferred-start'] as string | undefined,
-                preferredEnd: argv['preferred-end'] as string | undefined,
+                tags: argv.tags ? (argv.tags as string).split(',').map(t => t.trim()).filter(Boolean) : undefined,
               })
               if (argv.json) {
                 output(item, true)
@@ -446,6 +442,26 @@ yargs(hideBin(process.argv))
                 output(item, true)
               } else {
                 output(`Completed: ${argv.id}`, false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
+          'migrate',
+          'One-time import of legacy ~/.timebox/backlog.json into the Obsidian inbox',
+          (yargs) => {
+            return yargs.option('dry-run', { type: 'boolean', default: false, description: 'Preview without writing' })
+          },
+          async (argv) => {
+            try {
+              const { migrateBacklog, formatMigrateHuman } = await import('./commands/backlog-migrate')
+              const result = migrateBacklog({ dryRun: argv['dry-run'] as boolean })
+              if (argv.json) {
+                output(result, true)
+              } else {
+                output(formatMigrateHuman(result), false)
               }
             } catch (err) {
               errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)

@@ -51,18 +51,21 @@ npm run timebox -- <command> [--json]
 | `timebox backlog refine apply --id <id> ... --dry-run` | Preview the rewritten block without writing |
 | `timebox backlog refine delete --id <id>` | Remove the item entirely (e.g. no longer relevant) |
 
-### Backlog (legacy — `~/.timebox/backlog.json`)
+### Backlog (Obsidian inbox — canonical)
 
-These commands still operate on the legacy JSON store. Phase 6 will migrate them to read/write the Obsidian inbox; until then, `timebox capture` and `timebox backlog add` write to different stores.
+These commands read and write `$OBSIDIAN_VAULT_PATH/backlog/inbox.md` — the same file `timebox capture` and `timebox backlog refine` use. There is **one source of truth**; the legacy `~/.timebox/backlog.json` store has been retired (run `timebox backlog migrate` once to import any leftover items). `timebox backlog add` is a thin alias for `timebox capture`. Item IDs are short content hashes of `title + captured`, shared across capture/refine/plan-day — renaming an item changes its id.
 
 | Command | Purpose |
 |---------|---------|
-| `timebox backlog add --title "..." --duration N --priority hard\|soft\|none` | Add backlog item |
-| `timebox backlog add ... [--deadline DATE] [--outdoor] [--daylight] [--weekend]` | Add with constraints |
-| `timebox backlog list [--priority ...] [--status ...]` | List backlog items (excludes completed by default) |
-| `timebox backlog update --id <id> [--title ...] [--duration N] [--priority ...]` | Update backlog item |
-| `timebox backlog remove --id <id>` | Remove backlog item |
-| `timebox backlog complete --id <id>` | Mark item completed |
+| `timebox backlog add --title "..." [--duration N] [--priority hard\|soft\|none]` | Add an inbox item (alias for `capture`) |
+| `timebox backlog add ... [--deadline DATE] [--tags task/house,...] [--outdoor] [--daylight] [--weekend]` | Add with tags/constraints (constraints become `#outdoor`/`#daylight`/`#weekend` tags) |
+| `timebox backlog list [--priority ...] [--status pending\|scheduled\|completed\|all]` | List inbox items (excludes completed by default) |
+| `timebox backlog update --id <id> [--title ...] [--duration N] [--priority ...] [--status ...]` | Update an inbox item (`--status scheduled` writes `status::`; `completed` checks the box) |
+| `timebox backlog remove --id <id>` | Delete the item block from the inbox |
+| `timebox backlog complete --id <id>` | Flip `[ ]` → `[x]` and stamp `completed::` |
+| `timebox backlog migrate [--dry-run]` | One-time import of legacy `~/.timebox/backlog.json` into the inbox; renames the JSON to `.bak` (dedupes by id, safe to re-run) |
+
+`status` is represented in markdown as: pending (unchecked, no `status::`), scheduled (`status:: scheduled`), completed (`- [x]` checkbox + `completed::` date). `category` and `preferredWindow` from the old JSON model are dropped — the synthesizer reads tags + fields only.
 
 ### Code Catalog (cross-repo issue index)
 
@@ -222,12 +225,11 @@ For a *weekly* request, the Weekly Planning Workflow above still applies — `pl
 - `cli/` — Agent-driven CLI
   - `cli/index.ts` — Entry point + yargs command router
   - `cli/store.ts` — Daily schedule persistence (~/.timebox/schedule.json)
-  - `cli/backlog-store.ts` — Backlog persistence (~/.timebox/backlog.json)
   - `cli/week-store.ts` — Weekly schedule persistence (~/.timebox/weeks/<monday>.json)
   - `cli/catalog-store.ts` — Code catalog persistence (~/.timebox/code-catalog.json)
-  - `cli/inbox-store.ts` — Obsidian inbox.md parser/writer (shared by capture, refine, and Phase 5 synthesizer)
+  - `cli/inbox-store.ts` — Obsidian inbox.md parser/writer (canonical backlog store; shared by capture, backlog, refine, and the plan-day synthesizer)
   - `cli/types.ts` — CLI-specific types
-  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, week, catalog, capture, refine, plan-day)
+  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, backlog-migrate, week, catalog, capture, refine, plan-day)
 - `lib/time-budgets.ts` — Domain → prep/recovery profiles consumed by the plan-day synthesizer
 
 ## Environment Variables
