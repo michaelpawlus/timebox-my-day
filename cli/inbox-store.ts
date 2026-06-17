@@ -201,7 +201,7 @@ export function buildItemBlock(item: InboxItem, updates: ApplyUpdates = {}): str
   return [titleLine, ...fieldLines]
 }
 
-function writeAtomic(filePath: string, content: string): void {
+export function writeAtomic(filePath: string, content: string): void {
   const tmp = `${filePath}.tmp-${process.pid}-${Date.now()}`
   fs.writeFileSync(tmp, content, 'utf-8')
   fs.renameSync(tmp, filePath)

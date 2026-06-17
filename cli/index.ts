@@ -469,6 +469,31 @@ yargs(hideBin(process.argv))
           },
         )
         .command(
+          'archive',
+          'Move completed inbox items older than N days into a yearly archive file',
+          (yargs) => {
+            return yargs
+              .option('older-than-days', { type: 'number', default: 30, description: 'Archive completed items at least this many days old' })
+              .option('dry-run', { type: 'boolean', default: false, description: 'Preview without writing' })
+          },
+          async (argv) => {
+            try {
+              const { archiveBacklog, formatArchiveHuman } = await import('./commands/backlog-archive')
+              const result = archiveBacklog({
+                olderThanDays: argv['older-than-days'] as number,
+                dryRun: argv['dry-run'] as boolean,
+              })
+              if (argv.json) {
+                output(result, true)
+              } else {
+                output(formatArchiveHuman(result), false)
+              }
+            } catch (err) {
+              errorOut(err instanceof Error ? err.message : String(err), argv.json as boolean)
+            }
+          },
+        )
+        .command(
           'refine',
           'Briefing of unrefined Obsidian inbox items (default), or apply/delete subcommand',
           (yargs) => {

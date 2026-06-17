@@ -64,6 +64,7 @@ These commands read and write `$OBSIDIAN_VAULT_PATH/backlog/inbox.md` — the sa
 | `timebox backlog remove --id <id>` | Delete the item block from the inbox |
 | `timebox backlog complete --id <id>` | Flip `[ ]` → `[x]` and stamp `completed::` |
 | `timebox backlog migrate [--dry-run]` | One-time import of legacy `~/.timebox/backlog.json` into the inbox; renames the JSON to `.bak` (dedupes by id, safe to re-run) |
+| `timebox backlog archive [--older-than-days N] [--dry-run]` | Sweep `[x]`-completed items older than N days (default 30) out of `inbox.md` into `$OBSIDIAN_VAULT_PATH/backlog/archive/<year>.md`. Ages by `completed::` (falls back to `captured::`); items with neither date are left in place. Safe to re-run. |
 
 `status` is represented in markdown as: pending (unchecked, no `status::`), scheduled (`status:: scheduled`), completed (`- [x]` checkbox + `completed::` date). `category` and `preferredWindow` from the old JSON model are dropped — the synthesizer reads tags + fields only.
 
@@ -229,7 +230,7 @@ For a *weekly* request, the Weekly Planning Workflow above still applies — `pl
   - `cli/catalog-store.ts` — Code catalog persistence (~/.timebox/code-catalog.json)
   - `cli/inbox-store.ts` — Obsidian inbox.md parser/writer (canonical backlog store; shared by capture, backlog, refine, and the plan-day synthesizer)
   - `cli/types.ts` — CLI-specific types
-  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, backlog-migrate, week, catalog, capture, refine, plan-day)
+  - `cli/commands/` — Command implementations (weather, workout, calendar, schedule, context, backlog, backlog-migrate, backlog-archive, week, catalog, capture, refine, plan-day)
 - `lib/time-budgets.ts` — Domain → prep/recovery profiles consumed by the plan-day synthesizer
 
 ## Environment Variables
