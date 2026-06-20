@@ -2,6 +2,9 @@ import { WeatherData, HourlyWeather, DailyForecast } from '../types'
 
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 
+// Open-Meteo's free forecast horizon is ~7 days starting today.
+const FORECAST_HORIZON_DAYS = 7
+
 const WEATHER_CODES: Record<number, string> = {
   0: 'clear sky',
   1: 'mainly clear',
@@ -211,6 +214,19 @@ export async function fetchMultiDayWeather(days: number): Promise<DailyForecast[
   }
 
   return forecasts
+}
+
+/**
+ * Weather for a specific calendar date. Open-Meteo with `timezone: 'auto'`
+ * returns the location's local dates starting today, so we fetch the forecast
+ * horizon and match the requested date against those dates directly — rather
+ * than computing a day offset from the server clock, which may sit in a
+ * different timezone than the location and misclassify the date. Returns null
+ * for past dates or dates beyond the horizon, where no forecast exists.
+ */
+export async function fetchWeatherForDate(date: string): Promise<WeatherData | null> {
+  const forecasts = await fetchMultiDayWeather(FORECAST_HORIZON_DAYS)
+  return forecasts.find(f => f.date === date) ?? null
 }
 
 export function formatWeatherHuman(w: WeatherData): string {
