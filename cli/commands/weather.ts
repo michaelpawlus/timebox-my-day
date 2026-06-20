@@ -1,4 +1,3 @@
-import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { WeatherData, HourlyWeather, DailyForecast } from '../types'
 
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
@@ -218,15 +217,15 @@ export async function fetchMultiDayWeather(days: number): Promise<DailyForecast[
 }
 
 /**
- * Weather for a specific calendar date. Open-Meteo's forecast starts today, so
- * we request enough days to reach the target and return the matching day's
- * forecast (rather than today's). Returns null for past dates or dates beyond
- * the forecast horizon, where no meaningful forecast exists.
+ * Weather for a specific calendar date. Open-Meteo with `timezone: 'auto'`
+ * returns the location's local dates starting today, so we fetch the forecast
+ * horizon and match the requested date against those dates directly — rather
+ * than computing a day offset from the server clock, which may sit in a
+ * different timezone than the location and misclassify the date. Returns null
+ * for past dates or dates beyond the horizon, where no forecast exists.
  */
 export async function fetchWeatherForDate(date: string): Promise<WeatherData | null> {
-  const offset = differenceInCalendarDays(parseISO(date), new Date())
-  if (offset < 0 || offset >= FORECAST_HORIZON_DAYS) return null
-  const forecasts = await fetchMultiDayWeather(offset + 1)
+  const forecasts = await fetchMultiDayWeather(FORECAST_HORIZON_DAYS)
   return forecasts.find(f => f.date === date) ?? null
 }
 
