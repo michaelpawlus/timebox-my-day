@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useTimeBoxStore } from '@/lib/store'
@@ -25,6 +25,16 @@ const SOURCE_LABEL: Record<PlanBlockDraft['source'], string> = {
   'existing-plan': 'existing',
 }
 
+// Re-express an ISO timestamp as a timezone-free, browser-local wall-clock
+// string (YYYY-MM-DDTHH:mm:ss). Store times may be UTC instants (e.g. ICS
+// import uses toISOString()), and the synthesizer runs server-side where
+// isoToTime() would otherwise read them in the server's timezone — turning a
+// 09:00 local meeting into 13:00 on a UTC deployment. Normalizing here keeps
+// the wall-clock time the user sees.
+function toLocalWallClock(iso: string): string {
+  return format(parseISO(iso), "yyyy-MM-dd'T'HH:mm:ss")
+}
+
 function formatMinutes(total: number): string {
   const h = Math.floor(total / 60)
   const m = total % 60
@@ -34,7 +44,7 @@ function formatMinutes(total: number): string {
 }
 
 export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProps) {
-  const { selectedDate, planBlocks, clearPlanBlocks, addPlanBlock } = useTimeBoxStore()
+  const { selectedDate, addPlanBlock } = useTimeBoxStore()
 
   const [result, setResult] = useState<PlanDayResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -58,14 +68,21 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
     // this callback was last memoized — the user may have imported a calendar or
     // edited blocks since the modal mounted.
     const { busyEvents, planBlocks } = useTimeBoxStore.getState()
+    // Send browser-local wall-clock times so the server-side synthesizer reserves
+    // the same hours the user sees, regardless of the server's timezone.
+    const normalize = <T extends { start: string; end: string }>(b: T): T => ({
+      ...b,
+      start: toLocalWallClock(b.start),
+      end: toLocalWallClock(b.end),
+    })
     try {
       const res = await fetch('/api/plan-day', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: dateStr,
-          busyEvents,
-          existingPlanBlocks: planBlocks,
+          busyEvents: busyEvents.map(normalize),
+          existingPlanBlocks: planBlocks.map(normalize),
         }),
         signal: controller.signal,
       })
@@ -102,16 +119,13 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
   }, [isOpen, generate])
 
   const applyPlan = (plan: ArchetypePlan) => {
-    // Load everything except busy events — busy events already render from the
-    // store's busyEvents and aren't editable plan blocks.
-    const drafts = plan.blocks.filter(b => b.source !== 'busy')
-    if (
-      planBlocks.length > 0 &&
-      !window.confirm('Replace the current plan blocks with this suggestion?')
-    ) {
-      return
-    }
-    const newBlocks: PlanBlock[] = drafts.map(draft => {
+    // The synthesizer plans *around* existing busy events and plan blocks, so add
+    // only the genuinely new drafts (lunch + placed tasks). Existing plan blocks
+    // already live in the store with their full metadata (id, color, location) —
+    // recreating them from a PlanBlockDraft would strip those fields. Busy events
+    // render from the store separately and aren't editable plan blocks.
+    const drafts = plan.blocks.filter(b => b.source !== 'busy' && b.source !== 'existing-plan')
+    const added: PlanBlock[] = drafts.map(draft => {
       const { color, category } = getColorForTitle(draft.title)
       return {
         id: generateBlockId(),
@@ -123,9 +137,8 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
         notes: draft.notes,
       }
     })
-    clearPlanBlocks()
-    newBlocks.forEach(addPlanBlock)
-    showSuccess(`Loaded "${plan.archetype}" — ${newBlocks.length} block${newBlocks.length === 1 ? '' : 's'} into the editor`)
+    added.forEach(addPlanBlock)
+    showSuccess(`Added ${added.length} block${added.length === 1 ? '' : 's'} from "${plan.archetype}" to the editor`)
     onClose()
   }
 
