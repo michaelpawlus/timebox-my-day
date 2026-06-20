@@ -4,6 +4,7 @@ import DatePicker from '@/components/DatePicker'
 import TimeWindowControls from '@/components/TimeWindowControls'
 import Timeline from '@/components/Timeline'
 import ImportModal from '@/components/ImportModal'
+import SuggestDayModal from '@/components/SuggestDayModal'
 import PlanBlockEditor from '@/components/PlanBlockEditor'
 import NewBlockButton from '@/components/NewBlockButton'
 import ConflictWarning from '@/components/ConflictWarning'
@@ -21,6 +22,7 @@ import { exportPlanBlocks } from '@/lib/ics-generate'
 
 export default function Home() {
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showSuggestModal, setShowSuggestModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
   const { selectedBlockId, setSelectedBlockId, planBlocks, busyEvents, setConflicts, selectedDate, clearPlanBlocks } = useTimeBoxStore()
 
@@ -55,6 +57,13 @@ export default function Home() {
                 onClick={() => setShowImportModal(true)}
               >
                 Import
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowSuggestModal(true)}
+              >
+                Suggest Day
               </Button>
               <Button
                 size="sm"
@@ -125,6 +134,7 @@ export default function Home() {
 
       {/* Modals */}
       <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} />
+      <SuggestDayModal isOpen={showSuggestModal} onClose={() => setShowSuggestModal(false)} />
       <PlanBlockEditor blockId={selectedBlockId} onClose={() => setSelectedBlockId(null)} />
       <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </main>
