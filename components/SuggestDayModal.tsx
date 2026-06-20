@@ -34,7 +34,7 @@ function formatMinutes(total: number): string {
 }
 
 export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProps) {
-  const { selectedDate, busyEvents, planBlocks, clearPlanBlocks, addPlanBlock } = useTimeBoxStore()
+  const { selectedDate, planBlocks, clearPlanBlocks, addPlanBlock } = useTimeBoxStore()
 
   const [result, setResult] = useState<PlanDayResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -46,6 +46,10 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
     setIsLoading(true)
     setError(null)
     setResult(null)
+    // Read the live canvas state at click time, not whatever was captured when
+    // this callback was last memoized — the user may have imported a calendar or
+    // edited blocks since the modal mounted.
+    const { busyEvents, planBlocks } = useTimeBoxStore.getState()
     try {
       const res = await fetch('/api/plan-day', {
         method: 'POST',
@@ -67,9 +71,6 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
     } finally {
       setIsLoading(false)
     }
-    // busyEvents / planBlocks are snapshotted at click time; intentionally omitted
-    // from deps so re-renders don't refetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr])
 
   // Synthesize once when the modal opens.

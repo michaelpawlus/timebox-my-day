@@ -13,7 +13,7 @@ import {
 import { readInbox, InboxItem } from '../inbox-store'
 import { readCatalog } from '../catalog-store'
 import { addPlanBlockToDay, getWeekSchedule } from '../week-store'
-import { fetchWeather } from './weather'
+import { fetchWeatherForDate } from './weather'
 import { fetchWorkout } from './workout'
 import { WeatherData, WorkoutData } from '../types'
 
@@ -51,16 +51,12 @@ export async function planDay(opts: PlanDayOpts = {}): Promise<PlanDayApplied> {
   const weekSchedule = getWeekSchedule(mondayStr)
   const day = weekSchedule.days[target] || { date: target, busyEvents: [], planBlocks: [] }
 
-  // Weather: single-day, only meaningful for today/future. Open-Meteo returns
-  // forecast_days starting from today, so we only attempt when date >= today.
+  // Weather for the target date (null for past dates / beyond the forecast horizon).
   let weather: WeatherData | null = null
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
-  if (target >= todayStr) {
-    try {
-      weather = await fetchWeather()
-    } catch (err) {
-      process.stderr.write(`Warning: could not fetch weather: ${err instanceof Error ? err.message : String(err)}\n`)
-    }
+  try {
+    weather = await fetchWeatherForDate(target)
+  } catch (err) {
+    process.stderr.write(`Warning: could not fetch weather: ${err instanceof Error ? err.message : String(err)}\n`)
   }
 
   // Workout: only for today (workout-app CLI returns today's workout)

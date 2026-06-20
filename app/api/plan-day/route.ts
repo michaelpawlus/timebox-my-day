@@ -5,7 +5,7 @@ import { getMondayOfWeek } from '@/lib/week-utils'
 import { BusyEvent, PlanBlock } from '@/lib/types'
 import { readInbox, InboxItem } from '@/cli/inbox-store'
 import { readCatalog } from '@/cli/catalog-store'
-import { fetchWeather } from '@/cli/commands/weather'
+import { fetchWeatherForDate } from '@/cli/commands/weather'
 import { fetchWorkout } from '@/cli/commands/workout'
 import { WeatherData, WorkoutData } from '@/cli/types'
 
@@ -37,15 +37,12 @@ export async function POST(request: Request) {
   const busy = body.busyEvents || []
   const existingPlanBlocks = body.existingPlanBlocks || []
 
-  // Weather: only meaningful for today/future (Open-Meteo forecast starts today).
+  // Weather for the requested date (null for past dates / beyond the forecast horizon).
   let weather: WeatherData | null = null
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
-  if (target >= todayStr) {
-    try {
-      weather = await fetchWeather()
-    } catch {
-      weather = null
-    }
+  try {
+    weather = await fetchWeatherForDate(target)
+  } catch {
+    weather = null
   }
 
   // Workout: only for today (workout-app CLI returns today's workout).
