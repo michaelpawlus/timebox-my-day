@@ -81,6 +81,7 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: dateStr,
+          today: format(new Date(), 'yyyy-MM-dd'),
           busyEvents: busyEvents.map(normalize),
           existingPlanBlocks: planBlocks.map(normalize),
         }),

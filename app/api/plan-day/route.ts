@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic'
 
 interface PlanDayRequest {
   date?: string                       // YYYY-MM-DD; defaults to today
+  today?: string                      // browser-local today (YYYY-MM-DD), for tz-correct "is today" checks
   busyEvents?: BusyEvent[]            // current canvas busy events
   existingPlanBlocks?: PlanBlock[]    // current canvas plan blocks
 }
@@ -45,9 +46,12 @@ export async function POST(request: Request) {
     weather = null
   }
 
-  // Workout: only for today (workout-app CLI returns today's workout).
+  // Workout: only for today (the workout-app CLI returns today's workout). Use the
+  // client's local "today" when provided so a server in a different timezone doesn't
+  // attach the workout to the wrong selected date; fall back to the server clock.
+  const isTargetToday = body.today ? target === body.today : isTodayFn(parseISO(target))
   let workout: WorkoutData | null = null
-  if (isTodayFn(parseISO(target))) {
+  if (isTargetToday) {
     try {
       workout = await fetchWorkout()
     } catch {
