@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -42,7 +42,15 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd')
 
+  // Tracks the in-flight request so a stale response (e.g. the modal was closed
+  // and reopened on a different date) can't overwrite newer state.
+  const abortRef = useRef<AbortController | null>(null)
+
   const generate = useCallback(async () => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setIsLoading(true)
     setError(null)
     setResult(null)
@@ -59,31 +67,39 @@ export default function SuggestDayModal({ isOpen, onClose }: SuggestDayModalProp
           busyEvents,
           existingPlanBlocks: planBlocks,
         }),
+        signal: controller.signal,
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || `Request failed (${res.status})`)
       }
       const data = (await res.json()) as PlanDayResult
+      if (controller.signal.aborted) return
       setResult(data)
     } catch (err) {
+      if (controller.signal.aborted) return
       setError(err instanceof Error ? err.message : 'Failed to generate suggestions')
     } finally {
-      setIsLoading(false)
+      // Leave isLoading alone if this request was superseded — a newer generate()
+      // owns the loading state now.
+      if (!controller.signal.aborted) setIsLoading(false)
     }
   }, [dateStr])
 
-  // Synthesize once when the modal opens.
+  // Synthesize when the modal opens (and re-synthesize if the date changes while
+  // open). On close, abort any in-flight request and reset transient state so the
+  // next open starts fresh and a late response can't land on a new context.
   useEffect(() => {
-    if (isOpen && !result && !isLoading && !error) {
+    if (isOpen) {
       generate()
-    }
-    // Reset state when the modal closes so the next open starts fresh.
-    if (!isOpen && (result || error)) {
+    } else {
+      abortRef.current?.abort()
+      abortRef.current = null
       setResult(null)
       setError(null)
+      setIsLoading(false)
     }
-  }, [isOpen, result, isLoading, error, generate])
+  }, [isOpen, generate])
 
   const applyPlan = (plan: ArchetypePlan) => {
     // Load everything except busy events — busy events already render from the
